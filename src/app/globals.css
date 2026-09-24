@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #070b12;
+  --ink-2: #0c1320;
+  --panel: #101826;
+  --panel-2: #152033;
+  --line: #24344c;
+  --line-soft: #1a273a;
+  --text: #e8eef7;
+  --muted: #8fa3bd;
+  --mint: #2dd4bf;
+  --mint-dim: #134e4a;
+  --cyan: #38bdf8;
+  --amber: #fbbf24;
+  --rose: #fb7185;
+  --paper: #f3f6fa;
+  --grid: rgba(56, 189, 248, 0.06);
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  --radius: 16px;
+  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-mint: var(--mint);
+  --color-cyan: var(--cyan);
+  --color-amber: var(--amber);
+  --color-paper: var(--paper);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--mint) 40%, transparent);
+  color: white;
+}
+
+.blueprint-bg {
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(180deg, rgba(7, 11, 18, 0.2), rgba(7, 11, 18, 0.92)),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    radial-gradient(900px 500px at 15% -10%, rgba(45, 212, 191, 0.18), transparent 55%),
+    radial-gradient(800px 480px at 90% 0%, rgba(56, 189, 248, 0.14), transparent 50%);
+  background-size:
+    auto,
+    48px 48px,
+    48px 48px,
+    auto,
+    auto;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.panel {
+  background: color-mix(in oklab, var(--panel) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+}
+
+.hairline {
+  border: 1px solid var(--line);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 12px;
+  padding: 0.7rem 1.05rem;
+  font-weight: 600;
+  font-size: 0.925rem;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease,
+    opacity 160ms ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--mint);
+  color: #042f2e;
+}
+
+.btn-primary:hover {
+  background: color-mix(in oklab, var(--mint) 88%, white);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.btn-ghost:hover {
+  background: var(--panel-2);
+  border-color: color-mix(in oklab, var(--cyan) 35%, var(--line));
+}
+
+.btn-soft {
+  background: var(--panel-2);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: var(--muted);
+}
+
+.chip-mint {
+  background: color-mix(in oklab, var(--mint) 12%, var(--ink-2));
+  border-color: color-mix(in oklab, var(--mint) 35%, var(--line));
+  color: var(--mint);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: var(--text);
+  padding: 0.9rem 1rem;
+  font: inherit;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: color-mix(in oklab, var(--mint) 55%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--mint) 18%, transparent);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #2a3b55;
+  border-radius: 999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes pulse-line {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.building-pulse {
+  animation: pulse-line 1.4s ease-in-out infinite;
+}
