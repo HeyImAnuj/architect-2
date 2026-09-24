@@ -4,6 +4,11 @@ Dual-lane vibe-coding platform for **agentic applications** — built as the Lyz
 
 Live product thesis: Soft lane for operators / non-technical builders, Pro lane for engineers — same project, same agent graph, switch anytime.
 
+## Live demo
+
+- **App:** https://architect-2-sand.vercel.app
+- **GitHub:** https://github.com/HeyImAnuj/architect-2
+
 ## Product thesis
 
 Today's [Architect](https://www.architect.new/) is excellent for non-technical builders. Competitors either hide code (Lovable, Bolt, Emergent) or assume an IDE (Cursor, Codex, Claude Code). Architect 2.0 bridges both:
