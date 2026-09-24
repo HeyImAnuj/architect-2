@@ -28,7 +28,7 @@ export default function HomePage() {
   const projects = useAppStore((s) => s.projects);
   const createProject = useAppStore((s) => s.createProject);
   const signOut = useAppStore((s) => s.signOut);
-  const ensureDemo = useAppStore((s) => s.ensureDemo);
+  const refreshProjects = useAppStore((s) => s.refreshProjects);
 
   const [tab, setTab] = useState<ComposeTab>("prompt");
   const [prompt, setPrompt] = useState("");
@@ -36,11 +36,12 @@ export default function HomePage() {
   const [mode, setMode] = useState<AudienceMode>("soft");
   const [githubRepo, setGithubRepo] = useState("acme/support-agents");
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (hydrated && !user) router.replace("/auth");
-    if (hydrated && user) ensureDemo();
-  }, [hydrated, user, router, ensureDemo]);
+    if (hydrated && user) void refreshProjects();
+  }, [hydrated, user, router, refreshProjects]);
 
   const frameworks = useMemo(
     () =>
@@ -50,30 +51,35 @@ export default function HomePage() {
 
   async function handleCreate() {
     setCreating(true);
-    const source =
-      tab === "github"
-        ? "import-github"
-        : tab === "zip"
-          ? "import-zip"
-          : tab === "blank"
-            ? "blank"
-            : "prompt";
-    const id = createProject({
-      prompt:
-        tab === "prompt"
-          ? prompt || PROMPT_STARTERS[0].prompt
-          : tab === "github"
-            ? `Continue building imported repo ${githubRepo}`
-            : tab === "zip"
-              ? "Imported local project — map agents and keep iterating"
-              : "Blank agentic canvas",
-      framework,
-      mode,
-      source,
-      githubRepo: tab === "github" ? githubRepo : undefined,
-    });
-    await new Promise((r) => setTimeout(r, 350));
-    router.push(`/workspace/${id}`);
+    setError(null);
+    try {
+      const source =
+        tab === "github"
+          ? "import-github"
+          : tab === "zip"
+            ? "import-zip"
+            : tab === "blank"
+              ? "blank"
+              : "prompt";
+      const id = await createProject({
+        prompt:
+          tab === "prompt"
+            ? prompt || PROMPT_STARTERS[0].prompt
+            : tab === "github"
+              ? `Continue building imported repo ${githubRepo}`
+              : tab === "zip"
+                ? "Imported local project — map agents and keep iterating"
+                : "Blank agentic canvas",
+        framework,
+        mode,
+        source,
+        githubRepo: tab === "github" ? githubRepo : undefined,
+      });
+      router.push(`/workspace/${id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project");
+      setCreating(false);
+    }
   }
 
   if (!hydrated || !user) {
@@ -101,8 +107,8 @@ export default function HomePage() {
           </div>
           <button
             className="btn btn-ghost"
-            onClick={() => {
-              signOut();
+            onClick={async () => {
+              await signOut();
               router.push("/");
             }}
           >
@@ -275,14 +281,26 @@ export default function HomePage() {
           </div>
 
           {tab !== "zip" && (
-            <button
-              className="btn btn-primary mt-6"
-              onClick={handleCreate}
-              disabled={creating}
-            >
-              {creating ? "Opening atelier…" : "Create project"}
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <>
+              {error && (
+                <div className="mt-4 rounded-xl border border-rose/40 bg-rose/10 px-3 py-2 text-sm text-rose">
+                  {error}
+                </div>
+              )}
+              <button
+                className="btn btn-primary mt-6"
+                onClick={handleCreate}
+                disabled={creating}
+              >
+                {creating ? "Building project…" : "Create project"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          {tab === "zip" && error && (
+            <div className="mt-4 rounded-xl border border-rose/40 bg-rose/10 px-3 py-2 text-sm text-rose">
+              {error}
+            </div>
           )}
         </section>
 

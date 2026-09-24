@@ -23,7 +23,7 @@ export function PreviewPanel({
           <iframe
             title="App preview"
             className="h-full w-full bg-black"
-            sandbox=""
+            sandbox="allow-scripts allow-forms allow-modals"
             srcDoc={html}
           />
         </div>

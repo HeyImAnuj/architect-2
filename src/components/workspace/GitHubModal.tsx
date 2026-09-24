@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, GitBranch, Check } from "lucide-react";
 
 export function GitHubModal({
@@ -14,12 +14,24 @@ export function GitHubModal({
   onClose: () => void;
   connected: boolean;
   repo?: string;
-  onConnect: (repo: string) => void;
+  onConnect: (repo: string) => Promise<string> | string;
 }) {
   const [value, setValue] = useState(repo || "acme/my-agent-app");
   const [step, setStep] = useState<"auth" | "repo" | "done">(
     connected ? "done" : "auth",
   );
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setStep(connected ? "done" : "auth");
+      setValue(repo || "acme/my-agent-app");
+      setMessage("");
+      setError(null);
+    }
+  }, [open, connected, repo]);
 
   if (!open) return null;
 
@@ -36,52 +48,45 @@ export function GitHubModal({
           </button>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          {["auth", "repo", "done"].map((s, i) => (
-            <div
-              key={s}
-              className={`flex-1 rounded-full py-1 text-center mono text-[10px] uppercase tracking-wider ${
-                step === s || (step === "done" && i < 3) || (step === "repo" && i === 0)
-                  ? "bg-mint/15 text-mint"
-                  : "bg-ink-2 text-muted"
-              }`}
-            >
-              {s}
-            </div>
-          ))}
-        </div>
-
         {step === "auth" && (
           <div className="mt-5">
             <p className="text-sm text-muted">
-              Dummy OAuth: grant Architect access to create branches and open PRs from
-              Soft or Pro changes.
+              Connect a repository. With <span className="mono">GITHUB_TOKEN</span> set,
+              Architect also publishes a public gist of your source.
             </p>
-            <button
-              className="btn btn-primary mt-4"
-              onClick={() => setStep("repo")}
-            >
-              Authorize GitHub
+            <button className="btn btn-primary mt-4" onClick={() => setStep("repo")}>
+              Continue
             </button>
           </div>
         )}
 
         {step === "repo" && (
           <div className="mt-5 grid gap-3">
-            <label className="text-sm text-muted">Repository</label>
+            <label className="text-sm text-muted">Repository (org/repo)</label>
             <input
               className="input mono"
               value={value}
               onChange={(e) => setValue(e.target.value)}
             />
+            {error && <div className="text-sm text-rose">{error}</div>}
             <button
               className="btn btn-primary"
-              onClick={() => {
-                onConnect(value);
-                setStep("done");
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  const msg = await onConnect(value);
+                  setMessage(typeof msg === "string" ? msg : "Connected");
+                  setStep("done");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Failed");
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
-              Connect repository
+              {busy ? "Connecting…" : "Connect repository"}
             </button>
           </div>
         )}
@@ -92,11 +97,9 @@ export function GitHubModal({
               <Check className="h-4 w-4" />
               Connected to <span className="mono text-paper">{repo || value}</span>
             </div>
-            <p className="mt-2 text-sm text-muted">
-              Soft changes open draft PRs. Pro users can push branches and review diffs.
-            </p>
+            {message && <p className="mt-2 text-sm text-muted">{message}</p>}
             <button className="btn btn-soft mt-4" onClick={onClose}>
-              Back to atelier
+              Done
             </button>
           </div>
         )}

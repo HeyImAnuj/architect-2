@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   Boxes,
+  Download,
   FolderTree,
   GitBranch,
   Library,
@@ -26,9 +27,14 @@ import { KnowledgePanel } from "@/components/workspace/KnowledgePanel";
 import { TracesPanel } from "@/components/workspace/TracesPanel";
 import { GitHubModal } from "@/components/workspace/GitHubModal";
 import { DeployModal } from "@/components/workspace/DeployModal";
-import { uid } from "@/lib/utils";
+import { clientApi } from "@/lib/client-api";
 
-const NAV: { id: WorkspacePanel; label: string; icon: typeof MessageSquare; pro?: boolean }[] = [
+const NAV: {
+  id: WorkspacePanel;
+  label: string;
+  icon: typeof MessageSquare;
+  pro?: boolean;
+}[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "agents", label: "Agents", icon: Boxes },
   { id: "files", label: "Files", icon: FolderTree, pro: true },
@@ -50,18 +56,32 @@ export default function WorkspacePage() {
   const connectGithub = useAppStore((s) => s.connectGithub);
   const deployProject = useAppStore((s) => s.deployProject);
   const updateProject = useAppStore((s) => s.updateProject);
+  const addKnowledge = useAppStore((s) => s.addKnowledge);
+  const updateFile = useAppStore((s) => s.updateFile);
+  const refreshProjects = useAppStore((s) => s.refreshProjects);
 
   const [githubOpen, setGithubOpen] = useState(false);
   const [deployOpen, setDeployOpen] = useState(false);
   const [stage, setStage] = useState<"work" | "preview">("work");
+  const [loadingMissing, setLoadingMissing] = useState(false);
 
   useEffect(() => {
     if (hydrated && !user) router.replace("/auth");
   }, [hydrated, user, router]);
 
   useEffect(() => {
-    if (hydrated && user && !project) router.replace("/home");
-  }, [hydrated, user, project, router]);
+    if (!hydrated || !user || project || !params.id) return;
+    setLoadingMissing(true);
+    clientApi
+      .getProject(params.id)
+      .then(({ project: p }) => {
+        useAppStore.setState((s) => ({
+          projects: [p, ...s.projects.filter((x) => x.id !== p.id)],
+        }));
+      })
+      .catch(() => router.replace("/home"))
+      .finally(() => setLoadingMissing(false));
+  }, [hydrated, user, project, params.id, router]);
 
   const building = buildingProjectId === project?.id;
   const nav = useMemo(
@@ -70,7 +90,11 @@ export default function WorkspacePage() {
   );
 
   if (!hydrated || !user || !project) {
-    return <div className="blueprint-bg min-h-screen" />;
+    return (
+      <div className="blueprint-bg flex min-h-screen items-center justify-center text-sm text-muted">
+        {loadingMissing ? "Loading project…" : "Opening atelier…"}
+      </div>
+    );
   }
 
   return (
@@ -103,7 +127,7 @@ export default function WorkspacePage() {
               <button
                 key={m}
                 onClick={() => {
-                  setMode(project.id, m);
+                  void setMode(project.id, m);
                   if (m === "soft" && (activePanel === "files" || activePanel === "traces")) {
                     setPanel("chat");
                   }
@@ -116,7 +140,17 @@ export default function WorkspacePage() {
               </button>
             ))}
           </div>
-          <button className="btn btn-ghost hidden sm:inline-flex" onClick={() => setGithubOpen(true)}>
+          <a
+            className="btn btn-ghost hidden sm:inline-flex"
+            href={`/api/projects/${project.id}/export`}
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </a>
+          <button
+            className="btn btn-ghost hidden sm:inline-flex"
+            onClick={() => setGithubOpen(true)}
+          >
             <GitBranch className="h-4 w-4" />
             {project.githubConnected ? "GitHub" : "Connect"}
           </button>
@@ -181,7 +215,7 @@ export default function WorkspacePage() {
                   <ChatPanel
                     messages={project.messages}
                     mode={project.mode}
-                    onSend={(c) => sendMessage(project.id, c)}
+                    onSend={(c) => void sendMessage(project.id, c)}
                   />
                 )}
                 {activePanel === "agents" && (
@@ -189,23 +223,24 @@ export default function WorkspacePage() {
                     agents={project.agents}
                     edges={project.edges}
                     building={building}
+                    onChange={(agents) => void updateProject(project.id, { agents })}
                   />
                 )}
-                {activePanel === "files" && <FilesPanel files={project.files} />}
+                {activePanel === "files" && (
+                  <FilesPanel
+                    files={project.files}
+                    onSave={(path, content) => updateFile(project.id, path, content)}
+                  />
+                )}
                 {activePanel === "knowledge" && (
                   <KnowledgePanel
                     files={project.knowledgeFiles}
-                    onAdd={() =>
-                      updateProject(project.id, {
-                        knowledgeFiles: [
-                          ...project.knowledgeFiles,
-                          `note-${uid("doc").slice(-4)}.md`,
-                        ],
-                      })
-                    }
+                    onAdd={(file) => addKnowledge(project.id, file)}
                   />
                 )}
-                {activePanel === "traces" && <TracesPanel />}
+                {activePanel === "traces" && (
+                  <TracesPanel traces={project.traces || []} />
+                )}
               </motion.div>
             </AnimatePresence>
           </section>
@@ -233,14 +268,17 @@ export default function WorkspacePage() {
         onClose={() => setGithubOpen(false)}
         connected={project.githubConnected}
         repo={project.githubRepo}
-        onConnect={(repo) => connectGithub(project.id, repo)}
+        onConnect={async (repo) => connectGithub(project.id, repo)}
       />
       <DeployModal
         open={deployOpen}
-        onClose={() => setDeployOpen(false)}
+        onClose={() => {
+          setDeployOpen(false);
+          void refreshProjects();
+        }}
         deployed={project.deployed}
         url={project.deployUrl}
-        onDeploy={() => deployProject(project.id)}
+        onDeploy={async (meta) => deployProject(project.id, meta)}
       />
     </div>
   );

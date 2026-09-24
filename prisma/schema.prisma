@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String?
+  provider     String    @default("email")
+  avatar       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  projects     Project[]
+  published    PublishedApp[]
+}
+
+model Project {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  description      String   @default("")
+  prompt           String   @default("")
+  framework        String   @default("lyzr")
+  mode             String   @default("soft")
+  phase            String   @default("intent")
+  githubConnected  Boolean  @default(false)
+  githubRepo       String?
+  deployed         Boolean  @default(false)
+  deployUrl        String?
+  deploySlug       String?  @unique
+  agentsJson       String   @default("[]")
+  edgesJson        String   @default("[]")
+  messagesJson     String   @default("[]")
+  filesJson        String   @default("[]")
+  knowledgeJson    String   @default("[]")
+  previewHtml      String   @default("")
+  tracesJson       String   @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PublishedApp {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  name      String
+  html      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+}

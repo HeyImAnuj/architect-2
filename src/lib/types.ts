@@ -27,8 +27,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  avatar?: string;
-  provider: "google" | "guest";
+  avatar?: string | null;
+  provider: "google" | "guest" | "email";
 }
 
 export interface AgentNode {
@@ -63,6 +63,22 @@ export interface CodeFile {
   content: string;
 }
 
+export interface KnowledgeFile {
+  id: string;
+  name: string;
+  content: string;
+  type: string;
+  createdAt: number;
+}
+
+export interface TraceEvent {
+  id: string;
+  timestamp: number;
+  agent: string;
+  event: string;
+  status: "ok" | "heal" | "error";
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -77,12 +93,14 @@ export interface Project {
   githubRepo?: string;
   deployed: boolean;
   deployUrl?: string;
+  deploySlug?: string;
   agents: AgentNode[];
   edges: AgentEdge[];
   messages: ChatMessage[];
   files: CodeFile[];
   previewHtml: string;
-  knowledgeFiles: string[];
+  knowledgeFiles: KnowledgeFile[];
+  traces: TraceEvent[];
 }
 
 export interface CreateProjectInput {
@@ -92,4 +110,5 @@ export interface CreateProjectInput {
   mode: AudienceMode;
   source: "prompt" | "import-github" | "import-zip" | "blank";
   githubRepo?: string;
+  zipText?: string;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Rocket, X, ExternalLink, Check } from "lucide-react";
 
 export function DeployModal({
@@ -14,11 +14,24 @@ export function DeployModal({
   onClose: () => void;
   deployed: boolean;
   url?: string;
-  onDeploy: () => void;
+  onDeploy: (meta: { env: string; region: string }) => Promise<string>;
 }) {
   const [step, setStep] = useState<"env" | "region" | "ship" | "live">(
     deployed ? "live" : "env",
   );
+  const [env, setEnv] = useState("preview");
+  const [region, setRegion] = useState("us-east");
+  const [liveUrl, setLiveUrl] = useState(url || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setStep(deployed && url ? "live" : "env");
+      setLiveUrl(url || "");
+      setError(null);
+    }
+  }, [open, deployed, url]);
 
   if (!open) return null;
 
@@ -38,13 +51,17 @@ export function DeployModal({
         {step === "env" && (
           <div className="mt-5 grid gap-3">
             <p className="text-sm text-muted">
-              Soft users pick a preset. Pro users can set secrets, regions, and custom domains.
+              Publish a real hosted preview at an Architect URL others can open.
             </p>
             <label className="text-sm text-muted">Environment</label>
-            <select className="input">
-              <option>Preview</option>
-              <option>Staging</option>
-              <option>Production</option>
+            <select
+              className="input"
+              value={env}
+              onChange={(e) => setEnv(e.target.value)}
+            >
+              <option value="preview">Preview</option>
+              <option value="staging">Staging</option>
+              <option value="production">Production</option>
             </select>
             <button className="btn btn-primary" onClick={() => setStep("region")}>
               Continue
@@ -57,7 +74,13 @@ export function DeployModal({
             <label className="text-sm text-muted">Region</label>
             <div className="grid grid-cols-2 gap-2">
               {["us-east", "eu-west", "ap-south", "us-west"].map((r) => (
-                <button key={r} className="btn btn-soft justify-start">
+                <button
+                  key={r}
+                  className={`btn justify-start ${
+                    region === r ? "btn-primary" : "btn-soft"
+                  }`}
+                  onClick={() => setRegion(r)}
+                >
                   {r}
                 </button>
               ))}
@@ -71,16 +94,27 @@ export function DeployModal({
         {step === "ship" && (
           <div className="mt-5">
             <p className="text-sm text-muted">
-              Architect will promote the current preview, run smoke checks, and publish a URL.
+              Shipping publishes your current preview HTML to a public Architect route.
             </p>
+            {error && <p className="mt-2 text-sm text-rose">{error}</p>}
             <button
               className="btn btn-primary mt-4"
-              onClick={() => {
-                onDeploy();
-                setStep("live");
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  const next = await onDeploy({ env, region });
+                  setLiveUrl(next);
+                  setStep("live");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Deploy failed");
+                } finally {
+                  setBusy(false);
+                }
               }}
             >
-              Ship now
+              {busy ? "Shipping…" : "Ship now"}
             </button>
           </div>
         )}
@@ -91,12 +125,12 @@ export function DeployModal({
               <Check className="h-4 w-4" /> Live
             </div>
             <a
-              href={url || "#"}
+              href={liveUrl || url || "#"}
               className="mt-2 inline-flex items-center gap-2 text-sm text-paper underline"
               target="_blank"
               rel="noreferrer"
             >
-              {url || "https://app.architect.new"} <ExternalLink className="h-3.5 w-3.5" />
+              {liveUrl || url} <ExternalLink className="h-3.5 w-3.5" />
             </a>
             <button className="btn btn-soft mt-4" onClick={onClose}>
               Done

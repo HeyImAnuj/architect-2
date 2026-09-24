@@ -1,12 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CodeFile } from "@/lib/types";
 
-export function FilesPanel({ files }: { files: CodeFile[] }) {
-  const [active, setActive] = useState(files[0]?.path);
-
+export function FilesPanel({
+  files,
+  onSave,
+}: {
+  files: CodeFile[];
+  onSave: (path: string, content: string) => Promise<void> | void;
+}) {
+  const [active, setActive] = useState(files[0]?.path || "");
   const current = files.find((f) => f.path === active) || files[0];
+  const [draft, setDraft] = useState(current?.content || "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!files.find((f) => f.path === active) && files[0]) {
+      setActive(files[0].path);
+    }
+  }, [files, active]);
+
+  useEffect(() => {
+    setDraft(current?.content || "");
+  }, [current?.path, current?.content]);
 
   if (!files.length) {
     return (
@@ -36,14 +53,34 @@ export function FilesPanel({ files }: { files: CodeFile[] }) {
           </button>
         ))}
       </div>
-      <div className="scrollbar-thin min-h-0 overflow-auto bg-[#0a101a] p-4">
-        <div className="mb-2 flex items-center justify-between">
+      <div className="flex min-h-0 flex-col bg-[#0a101a]">
+        <div className="flex items-center justify-between border-b border-line px-4 py-2">
           <span className="mono text-xs text-muted">{current?.path}</span>
-          <span className="chip">{current?.language}</span>
+          <div className="flex items-center gap-2">
+            <span className="chip">{current?.language}</span>
+            <button
+              className="btn btn-primary px-3 py-1.5 text-xs"
+              disabled={saving || draft === current?.content}
+              onClick={async () => {
+                if (!current) return;
+                setSaving(true);
+                try {
+                  await onSave(current.path, draft);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
         </div>
-        <pre className="mono whitespace-pre-wrap text-[12px] leading-relaxed text-paper/90">
-          {current?.content}
-        </pre>
+        <textarea
+          className="scrollbar-thin mono min-h-0 flex-1 resize-none border-0 bg-transparent p-4 text-[12px] leading-relaxed text-paper/90 outline-none"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          spellCheck={false}
+        />
       </div>
     </div>
   );

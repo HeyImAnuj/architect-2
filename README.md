@@ -1,53 +1,28 @@
 # Architect 2.0
 
-Dual-lane vibe-coding platform for **agentic applications** — built as the Lyzr Technical Product Manager assignment.
-
-Live product thesis: Soft lane for operators / non-technical builders, Pro lane for engineers — same project, same agent graph, switch anytime.
+Dual-lane vibe-coding platform for **agentic applications**.
 
 ## Live demo
 
 - **App:** https://architect-2-sand.vercel.app
 - **GitHub:** https://github.com/HeyImAnuj/architect-2
 
-## Product thesis
+> Note: Full database features (auth, projects, deploy) run on the local Node server with SQLite. Vercel serverless does not persist SQLite — use local/`npm start` for the complete experience, or point a hosted Postgres later.
 
-Today's [Architect](https://www.architect.new/) is excellent for non-technical builders. Competitors either hide code (Lovable, Bolt, Emergent) or assume an IDE (Cursor, Codex, Claude Code). Architect 2.0 bridges both:
+## What works (real functionality)
 
-| Audience | Job to be done | Lane |
-| --- | --- | --- |
-| Non-technical | Prompt → agentic app → share URL | Soft |
-| Technical | Import repo, pick framework, edit source, GitHub, traces, deploy | Pro |
-
-**Differentiation**
-1. **Agent graph as source of truth** — not buried behind a chat box
-2. **Dual Soft / Pro lane** — not a locked no-code wall, not IDE-only
-3. **Framework freedom** — Lyzr, LangGraph, CrewAI, AutoGen, OpenAI Agents, BYO
-4. **Import continuum** — prompt, GitHub, zip, blank canvas
-5. **Build map** — Intent → Plan → Agents → UI → Self-heal → Ready
-6. **First-principles atelier UX** — rail + stage + always-on preview (not a Lovable clone)
-
-## Features covered
-
-- Authentication (Google simulated + guest)
-- Homepage / compose studio
-- Chat window (Soft vs Pro copy)
-- App preview (live iframe)
-- Agent section (visual graph)
-- UI getting built (phased build animation)
-- GitHub integration (multi-step dummy OAuth)
-- Deploying the app (env → region → ship)
-- Knowledge attachments
-- Observability / traces (Pro)
-- Files / source browser (Pro)
-- Framework picker
-- Project persistence (localStorage via Zustand)
-
-## Stack
-
-- Next.js 16 (App Router) + TypeScript
-- Tailwind CSS v4
-- Framer Motion
-- Zustand (persisted)
+- **Auth** — email sign-up/sign-in (bcrypt + JWT cookies), Google entry, guest mode
+- **Database** — SQLite via `better-sqlite3` (`data/architect.db`)
+- **Compose** — prompt / GitHub import / zip import / blank canvas
+- **Generation** — real multi-agent graph, source files, interactive preview HTML
+- **Chat** — persists messages and mutates the live preview
+- **Agents** — add/edit agents on the canvas (saved to DB)
+- **Files** — edit + save source files
+- **Knowledge** — upload real text files into the project
+- **Traces** — run logs from builds and chat
+- **GitHub** — connect repo; optional gist publish with `GITHUB_TOKEN`
+- **Export** — download project zip
+- **Deploy** — publishes a public app at `/a/[slug]`
 
 ## Run locally
 
@@ -56,28 +31,23 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000
 
-## Deploy
-
-Deploy to Vercel (or any Node host):
+### Optional env (`.env`)
 
 ```bash
-npm run build
-npm start
+AUTH_SECRET=any-long-random-string
+DATABASE_URL=file:./dev.db
+OPENAI_API_KEY=   # optional — richer HTML polish
+GITHUB_TOKEN=     # optional — create gists on connect
 ```
 
-Or connect this repo to Vercel and deploy from `main`.
+## Reviewer path
 
-## Reviewer path (2 minutes)
-
-1. Landing → **Start building**
-2. Continue with Google (or guest)
-3. Soft mode → pick a starter prompt → Create
-4. Watch Build map animate; open **Agents** and **Preview**
-5. Toggle **Pro** → open **Files** and **Traces**
-6. Connect GitHub → Deploy
-
-## Assignment notes
-
-Most flows are intentionally high-fidelity product demos (dummy backend). Auth + project state persist in the browser so the experience feels continuous without requiring API keys.
+1. Sign up with email (or guest)
+2. Soft mode → pick a starter → Create project
+3. Watch build map → open Agents → run workflow inside Preview
+4. Chat “add a citations panel”
+5. Toggle Pro → edit a file → Save
+6. Attach a knowledge `.md` file
+7. Connect GitHub → Export zip → Deploy → open the live `/a/...` URL

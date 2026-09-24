@@ -18,9 +18,9 @@
   --grid: rgba(56, 189, 248, 0.06);
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
   --radius: 16px;
-  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 @theme inline {
@@ -34,6 +34,7 @@
   --color-mint: var(--mint);
   --color-cyan: var(--cyan);
   --color-amber: var(--amber);
+  --color-rose: var(--rose);
   --color-paper: var(--paper);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
