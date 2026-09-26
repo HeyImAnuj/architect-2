@@ -8,12 +8,14 @@ export function DeployModal({
   onClose,
   deployed,
   url,
+  githubRepo,
   onDeploy,
 }: {
   open: boolean;
   onClose: () => void;
   deployed: boolean;
   url?: string;
+  githubRepo?: string;
   onDeploy: (meta: { env: string; region: string }) => Promise<string>;
 }) {
   const [step, setStep] = useState<"env" | "region" | "ship" | "live">(
@@ -94,7 +96,8 @@ export function DeployModal({
         {step === "ship" && (
           <div className="mt-5">
             <p className="text-sm text-muted">
-              Shipping publishes your current preview HTML to a public Architect route.
+              This publishes the working preview at a public Architect URL.
+              {githubRepo ? " The GitHub repository is listed below." : ""}
             </p>
             {error && <p className="mt-2 text-sm text-rose">{error}</p>}
             <button
@@ -132,6 +135,16 @@ export function DeployModal({
             >
               {liveUrl || url} <ExternalLink className="h-3.5 w-3.5" />
             </a>
+            {githubRepo && (
+              <a
+                href={`https://github.com/${githubRepo}`}
+                className="mt-2 flex items-center gap-2 text-sm text-paper underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                github.com/{githubRepo} <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
             <button className="btn btn-soft mt-4" onClick={onClose}>
               Done
             </button>

@@ -9,6 +9,7 @@ export type FrameworkId =
   | "custom";
 
 export type BuildPhase =
+  | "planning"
   | "intent"
   | "plan"
   | "agents"
@@ -21,7 +22,9 @@ export type WorkspacePanel =
   | "agents"
   | "files"
   | "knowledge"
-  | "traces";
+  | "traces"
+  | "data"
+  | "plan";
 
 export interface User {
   id: string;
@@ -101,6 +104,12 @@ export interface Project {
   previewHtml: string;
   knowledgeFiles: KnowledgeFile[];
   traces: TraceEvent[];
+  planAnswers?: Record<string, string | string[]>;
+  planMarkdown?: string;
+  skillMarkdown?: string;
+  connectors?: string[];
+  visibility?: "private" | "shared";
+  envVars?: Record<string, string>;
 }
 
 export interface CreateProjectInput {
@@ -111,4 +120,6 @@ export interface CreateProjectInput {
   source: "prompt" | "import-github" | "import-zip" | "blank";
   githubRepo?: string;
   zipText?: string;
+  zipBase64?: string;
+  connectors?: string[];
 }

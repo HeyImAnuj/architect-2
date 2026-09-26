@@ -20,8 +20,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return error("Unauthorized", 401);
   const { id } = await ctx.params;
-  const row = db
-    .prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?")
+  const row = await db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?")
     .get(id, user.id) as DbProject | undefined;
   if (!row) return error("Not found", 404);
 
@@ -35,28 +34,26 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const deployUrl = `${origin}/a/${slug}`;
   const now = Date.now();
 
-  const existing = db
-    .prepare("SELECT id FROM published_apps WHERE slug = ?")
+  const existing = await db.prepare("SELECT id FROM published_apps WHERE slug = ?")
     .get(slug) as { id: string } | undefined;
 
   if (existing) {
-    db.prepare(
+    await db.prepare(
       `UPDATE published_apps SET html = ?, name = ?, updated_at = ? WHERE slug = ?`,
     ).run(row.preview_html, row.name, now, slug);
   } else {
-    db.prepare(
+    await db.prepare(
       `INSERT INTO published_apps (id, slug, user_id, project_id, name, html, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(newId("pub"), slug, user.id, row.id, row.name, row.preview_html, now, now);
   }
 
-  db.prepare(
+  await db.prepare(
     `UPDATE projects SET deployed = 1, deploy_url = ?, deploy_slug = ?, phase = 'ready', updated_at = ?
      WHERE id = ?`,
   ).run(deployUrl, slug, now, id);
 
-  const updated = db
-    .prepare("SELECT * FROM projects WHERE id = ?")
+  const updated = await db.prepare("SELECT * FROM projects WHERE id = ?")
     .get(id) as DbProject;
 
   return json({

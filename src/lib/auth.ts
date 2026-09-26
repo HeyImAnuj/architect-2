@@ -56,14 +56,12 @@ export async function clearSessionCookie() {
   jar.delete(COOKIE);
 }
 
-export function findUserById(id: string): DbUser | undefined {
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(id) as DbUser | undefined;
+export async function findUserById(id: string): Promise<DbUser | undefined> {
+  return await db.prepare("SELECT * FROM users WHERE id = ?").get<DbUser>(id);
 }
 
-export function findUserByEmail(email: string): DbUser | undefined {
-  return db
-    .prepare("SELECT * FROM users WHERE email = ?")
-    .get(email.toLowerCase()) as DbUser | undefined;
+export async function findUserByEmail(email: string): Promise<DbUser | undefined> {
+  return await db.prepare("SELECT * FROM users WHERE email = ?").get<DbUser>(email.toLowerCase());
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -74,7 +72,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const { payload } = await jwtVerify(token, secret());
     const id = String(payload.id || "");
     if (!id) return null;
-    const user = findUserById(id);
+    const user = await findUserById(id);
     if (!user) return null;
     return {
       id: user.id,

@@ -38,15 +38,15 @@ export async function POST(req: NextRequest) {
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) return error("Invalid registration payload");
     const email = parsed.data.email.toLowerCase();
-    if (findUserByEmail(email)) return error("Email already registered", 409);
+    if (await findUserByEmail(email)) return error("Email already registered", 409);
     const now = Date.now();
     const id = newId("user");
     const passwordHash = await hashPassword(parsed.data.password);
-    db.prepare(
+    await db.prepare(
       `INSERT INTO users (id, email, name, password_hash, provider, avatar, created_at, updated_at)
        VALUES (?, ?, ?, ?, 'email', NULL, ?, ?)`,
     ).run(id, email, parsed.data.name, passwordHash, now, now);
-    const user = findUserByEmail(email)!;
+    const user = (await findUserByEmail(email))!;
     const token = await createSessionToken(toPublicUser(user));
     await setSessionCookie(token);
     return json({ user: toPublicUser(user) });
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (action === "login") {
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) return error("Invalid login payload");
-    const user = findUserByEmail(parsed.data.email.toLowerCase());
+    const user = await findUserByEmail(parsed.data.email.toLowerCase());
     if (!user?.password_hash) return error("Invalid email or password", 401);
     const ok = await verifyPassword(parsed.data.password, user.password_hash);
     if (!ok) return error("Invalid email or password", 401);
@@ -69,11 +69,11 @@ export async function POST(req: NextRequest) {
     const id = newId("user");
     const email = `guest_${id.slice(-6)}@architect.local`;
     const name = body.name?.trim() || "Guest Builder";
-    db.prepare(
+    await db.prepare(
       `INSERT INTO users (id, email, name, password_hash, provider, avatar, created_at, updated_at)
        VALUES (?, ?, ?, NULL, 'guest', NULL, ?, ?)`,
     ).run(id, email, name, now, now);
-    const user = findUserByEmail(email)!;
+    const user = (await findUserByEmail(email))!;
     const token = await createSessionToken(toPublicUser(user));
     await setSessionCookie(token);
     return json({ user: toPublicUser(user) });
@@ -91,34 +91,34 @@ export async function POST(req: NextRequest) {
       const id = newId("user");
       const email = `google_${id.slice(-6)}@gmail.com`;
       const name = "Google User";
-      const existing = findUserByEmail(email);
+      const existing = await findUserByEmail(email);
       if (!existing) {
-        db.prepare(
+        await db.prepare(
           `INSERT INTO users (id, email, name, password_hash, provider, avatar, created_at, updated_at)
            VALUES (?, ?, ?, NULL, 'google', NULL, ?, ?)`,
         ).run(id, email, name, now, now);
       }
-      const user = findUserByEmail(email)!;
+      const user = (await findUserByEmail(email))!;
       const token = await createSessionToken(toPublicUser(user));
       await setSessionCookie(token);
       return json({ user: toPublicUser(user), simulated: true });
     }
 
     const email = profile.email.toLowerCase();
-    let user = findUserByEmail(email);
+    let user = await findUserByEmail(email);
     const now = Date.now();
     if (!user) {
       const id = profile.sub ? `google_${profile.sub}` : newId("user");
-      db.prepare(
+      await db.prepare(
         `INSERT INTO users (id, email, name, password_hash, provider, avatar, created_at, updated_at)
          VALUES (?, ?, ?, NULL, 'google', ?, ?, ?)`,
       ).run(id, email, profile.name || email.split("@")[0], profile.picture || null, now, now);
-      user = findUserByEmail(email)!;
+      user = (await findUserByEmail(email))!;
     } else {
-      db.prepare(
+      await db.prepare(
         `UPDATE users SET name = ?, avatar = ?, provider = 'google', updated_at = ? WHERE id = ?`,
       ).run(profile.name || user.name, profile.picture || user.avatar, now, user.id);
-      user = findUserByEmail(email)!;
+      user = (await findUserByEmail(email))!;
     }
     const token = await createSessionToken(toPublicUser(user));
     await setSessionCookie(token);
@@ -127,6 +127,41 @@ export async function POST(req: NextRequest) {
 
   if (action === "logout") {
     await clearSessionCookie();
+    return json({ ok: true });
+  }
+
+  if (action === "forgot") {
+    const email = String(body.email || "").toLowerCase();
+    const user = await findUserByEmail(email);
+    if (!user) return json({ ok: true, message: "If that email exists, a reset link is ready." });
+    const token = newId("reset");
+    const expires = Date.now() + 1000 * 60 * 30;
+    await db
+      .prepare(
+        "INSERT INTO password_resets (token, user_id, expires_at) VALUES (?, ?, ?)",
+      )
+      .run(token, user.id, expires);
+    const resetUrl = `${req.nextUrl.origin}/auth/reset?token=${token}`;
+    return json({
+      ok: true,
+      resetUrl,
+      message: "Reset link created. Open it to choose a new password.",
+    });
+  }
+
+  if (action === "reset") {
+    const token = String(body.token || "");
+    const password = String(body.password || "");
+    if (password.length < 6) return error("Password must be at least 6 characters");
+    const row = await db
+      .prepare("SELECT user_id, expires_at FROM password_resets WHERE token = ?")
+      .get<{ user_id: string; expires_at: string | number }>(token);
+    if (!row || Number(row.expires_at) < Date.now()) return error("Reset link expired", 400);
+    const passwordHash = await hashPassword(password);
+    await db
+      .prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?")
+      .run(passwordHash, Date.now(), row.user_id);
+    await db.prepare("DELETE FROM password_resets WHERE token = ?").run(token);
     return json({ ok: true });
   }
 

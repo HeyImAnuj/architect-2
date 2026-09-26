@@ -26,8 +26,6 @@ export function toClientProject(row: DbProject): Project {
     framework: row.framework as Project["framework"],
     mode: row.mode as Project["mode"],
     phase: row.phase as Project["phase"],
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
     githubConnected: Boolean(row.github_connected),
     githubRepo: row.github_repo ?? undefined,
     deployed: Boolean(row.deployed),
@@ -40,6 +38,14 @@ export function toClientProject(row: DbProject): Project {
     knowledgeFiles: parseJson<KnowledgeFile[]>(row.knowledge_json, []),
     previewHtml: row.preview_html,
     traces: parseJson<TraceEvent[]>(row.traces_json, []),
+    planAnswers: parseJson(row.answers_json || "{}", {}),
+    planMarkdown: row.plan_json && row.plan_json !== "{}" ? row.plan_json : "",
+    skillMarkdown: row.skill_md || "",
+    connectors: parseJson<string[]>(row.connectors_json || "[]", []),
+    visibility: (row.visibility as Project["visibility"]) || "private",
+    envVars: parseJson<Record<string, string>>(row.env_json || "{}", {}),
+    createdAt: Number(row.created_at),
+    updatedAt: Number(row.updated_at),
   };
 }
 

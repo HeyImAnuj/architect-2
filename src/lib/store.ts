@@ -11,6 +11,7 @@ import type {
   KnowledgeFile,
   CodeFile,
   BuildPhase,
+  FrameworkId,
 } from "./types";
 import { clientApi } from "./client-api";
 import { uid } from "./utils";
@@ -21,6 +22,10 @@ interface AppState {
   user: User | null;
   projects: Project[];
   activePanel: WorkspacePanel;
+  composeMode: AudienceMode;
+  composeFramework: FrameworkId;
+  panelRequest: { id: string; nonce: number } | null;
+  workspaceAction: { type: "github" | "deploy"; nonce: number } | null;
   buildingProjectId: string | null;
   error: string | null;
   setHydrated: (v: boolean) => void;
@@ -37,8 +42,13 @@ interface AppState {
   getProject: (id: string) => Project | undefined;
   setMode: (id: string, mode: AudienceMode) => Promise<void>;
   setPanel: (panel: WorkspacePanel) => void;
+  setComposeMode: (mode: AudienceMode) => void;
+  setComposeFramework: (framework: FrameworkId) => void;
+  requestPanel: (id: string) => void;
+  requestWorkspaceAction: (type: "github" | "deploy") => void;
   sendMessage: (projectId: string, content: string) => Promise<void>;
   connectGithub: (projectId: string, repo: string) => Promise<string>;
+  importRepo: (projectId: string, repo: string) => Promise<void>;
   deployProject: (
     projectId: string,
     meta?: { env?: string; region?: string },
@@ -56,12 +66,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   projects: [],
   activePanel: "chat",
+  composeMode: "soft",
+  composeFramework: "lyzr",
+  panelRequest: null,
+  workspaceAction: null,
   buildingProjectId: null,
   error: null,
 
   setHydrated: (v) => set({ hydrated: v }),
   setError: (error) => set({ error }),
   setPanel: (panel) => set({ activePanel: panel }),
+  setComposeMode: (mode) =>
+    set((state) => ({
+      composeMode: mode,
+      composeFramework:
+        mode === "soft" && !["lyzr", "crewai"].includes(state.composeFramework)
+          ? "lyzr"
+          : state.composeFramework,
+    })),
+  setComposeFramework: (framework) => set({ composeFramework: framework }),
+  requestPanel: (id) =>
+    set((state) => ({
+      panelRequest: { id, nonce: (state.panelRequest?.nonce ?? 0) + 1 },
+    })),
+  requestWorkspaceAction: (type) =>
+    set((state) => ({
+      workspaceAction: { type, nonce: (state.workspaceAction?.nonce ?? 0) + 1 },
+    })),
 
   bootstrap: async () => {
     if (get().bootstrapping) return;
@@ -117,8 +148,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   createProject: async (input) => {
     const { project } = await clientApi.createProject(input);
     set((s) => ({ projects: [project, ...s.projects.filter((p) => p.id !== project.id)] }));
-    if (input.source === "prompt" || input.source === "import-github" || input.source === "import-zip") {
-      // Animate phases client-side while data is already ready
+    if (
+      project.phase !== "planning" &&
+      (input.source === "prompt" ||
+        input.source === "import-github" ||
+        input.source === "import-zip")
+    ) {
       get().animateBuild(project.id, project);
     }
     return project.id;
@@ -178,6 +213,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       projects: s.projects.map((p) => (p.id === projectId ? result.project : p)),
     }));
     return result.message;
+  },
+
+  importRepo: async (projectId, repo) => {
+    const { project } = await clientApi.importRepo(projectId, repo);
+    set((s) => ({
+      projects: s.projects.map((p) => (p.id === projectId ? project : p)),
+    }));
   },
 
   deployProject: async (projectId, meta) => {

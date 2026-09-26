@@ -2,20 +2,18 @@ import { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { db, newId, type DbProject } from "@/lib/db";
 import { error, json } from "@/lib/api";
-import { toClientProject, emptyProjectFields } from "@/lib/project-mapper";
-import {
-  generateProjectFromPrompt,
-  maybeEnhanceWithOpenAI,
-  buildPreviewHtml,
-  buildFiles,
-} from "@/lib/generator";
-import type { FrameworkId, AudienceMode, KnowledgeFile } from "@/lib/types";
+import { toClientProject } from "@/lib/project-mapper";
+import { buildPreviewHtml, buildFiles } from "@/lib/generator";
+import { buildApp } from "@/lib/llm";
+import { fetchRepoFiles } from "@/lib/github";
+import { filesFromZip, previewFromFiles } from "@/lib/import-files";
+import { decryptSecret } from "@/lib/secrets";
+import type { CodeFile, FrameworkId, AudienceMode } from "@/lib/types";
 
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return error("Unauthorized", 401);
-  const rows = db
-    .prepare("SELECT * FROM projects WHERE user_id = ? ORDER BY updated_at DESC")
+  const rows = await db.prepare("SELECT * FROM projects WHERE user_id = ? ORDER BY updated_at DESC")
     .all(user.id) as DbProject[];
   return json({ projects: rows.map(toClientProject) });
 }
@@ -50,7 +48,7 @@ export async function POST(req: NextRequest) {
         timestamp: now,
       },
     ];
-    db.prepare(
+    await db.prepare(
       `INSERT INTO projects (
         id, user_id, name, description, prompt, framework, mode, phase,
         github_connected, github_repo, deployed, deploy_url, deploy_slug,
@@ -71,167 +69,138 @@ export async function POST(req: NextRequest) {
       now,
       now,
     );
-    const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as DbProject;
+    const row = await db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as DbProject;
     return json({ project: toClientProject(row) });
   }
 
-  if (source === "import-github") {
-    const repo = String(body.githubRepo || "acme/imported-app");
-    const name = repo.split("/").pop() || "Imported App";
-    const generated = generateProjectFromPrompt({
-      prompt: prompt || `Continue building imported repository ${repo}`,
+  if (source === "import-github" || source === "import-zip") {
+    const repo = String(body.githubRepo || "").trim();
+    let files: CodeFile[] = [];
+    let name = body.name?.trim() || "Imported project";
+    let githubRepo: string | null = null;
+    if (source === "import-github") {
+      if (!repo.includes("/")) return error("Use org/repo for a GitHub import");
+      name = repo.split("/").pop() || name;
+      githubRepo = repo;
+      const account = (await db
+        .prepare("SELECT github_token FROM users WHERE id = ?")
+        .get(user.id)) as { github_token: string | null } | undefined;
+      const token = account?.github_token ? decryptSecret(account.github_token) : null;
+      try {
+        files = await fetchRepoFiles(repo, token);
+      } catch (err) {
+        return error(err instanceof Error ? err.message : "Could not read that repository", 400);
+      }
+      if (!files.length) return error("That repository has no text files Architect can import.", 400);
+    } else {
+      const zipBase64 = String(body.zipBase64 || "");
+      if (!zipBase64) return error("Choose a zip file to import.");
+      try {
+        files = await filesFromZip(zipBase64);
+      } catch {
+        return error("That file is not a readable zip.", 400);
+      }
+      if (!files.length) return error("The zip did not contain any project files.", 400);
+      name = body.name?.trim() || files[0]?.path.split("/")[0] || "Imported zip";
+    }
+
+    const built = await buildApp({
+      prompt: `${prompt}\n\nImported files:\n${files.map((file) => file.path).join("\n")}`,
       framework,
       seed: id,
     });
-    generated.messages.unshift({
+    built.files = files;
+    built.previewHtml = built.usedModel ? built.previewHtml : previewFromFiles(name, files);
+    built.name = name;
+    built.messages.unshift({
       id: newId("msg"),
       role: "system",
-      content: `Imported ${repo}. Mapped structure into Architect and generated an agent graph you can keep editing.`,
+      content: source === "import-github" ? `Imported ${repo} into the studio.` : "Imported the zip into the studio.",
       timestamp: now,
       meta: "Import",
     });
-    db.prepare(
-      `INSERT INTO projects (
-        id, user_id, name, description, prompt, framework, mode, phase,
-        github_connected, github_repo, deployed, deploy_url, deploy_slug,
-        agents_json, edges_json, messages_json, files_json, knowledge_json,
-        preview_html, traces_json, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, NULL, NULL, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`,
-    ).run(
-      id,
-      user.id,
-      name,
-      generated.description,
-      generated.messages.find((m) => m.role === "user")?.content || prompt,
-      framework,
-      mode,
-      generated.phase,
-      repo,
-      JSON.stringify(generated.agents),
-      JSON.stringify(generated.edges),
-      JSON.stringify(generated.messages),
-      JSON.stringify(generated.files),
-      generated.previewHtml,
-      JSON.stringify(generated.traces),
-      now,
-      now,
-    );
-    const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as DbProject;
-    return json({ project: toClientProject(row) });
-  }
 
-  if (source === "import-zip") {
-    const zipText = String(body.zipText || "");
-    const name = body.name?.trim() || "Imported Zip Project";
-    const generated = generateProjectFromPrompt({
-      prompt:
-        prompt ||
-        `Imported local project archive. ${zipText.slice(0, 200) || "Continue building in Architect."}`,
-      framework,
-      seed: id,
-    });
-    db.prepare(
+    await db.prepare(
       `INSERT INTO projects (
         id, user_id, name, description, prompt, framework, mode, phase,
         github_connected, github_repo, deployed, deploy_url, deploy_slug,
         agents_json, edges_json, messages_json, files_json, knowledge_json,
         preview_html, traces_json, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, NULL, NULL, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`,
     ).run(
       id,
       user.id,
       name,
-      generated.description,
-      generated.messages.find((m) => m.role === "user")?.content || prompt,
+      built.description,
+      prompt || `Imported ${name}`,
       framework,
       mode,
-      generated.phase,
-      JSON.stringify(generated.agents),
-      JSON.stringify(generated.edges),
-      JSON.stringify(generated.messages),
-      JSON.stringify(generated.files),
-      generated.previewHtml,
-      JSON.stringify(generated.traces),
+      "ready",
+      githubRepo ? 1 : 0,
+      githubRepo,
+      JSON.stringify(built.agents),
+      JSON.stringify(built.edges),
+      JSON.stringify(built.messages),
+      JSON.stringify(files),
+      built.previewHtml,
+      JSON.stringify(built.traces),
       now,
       now,
     );
-    const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as DbProject;
+    const row = (await db.prepare("SELECT * FROM projects WHERE id = ?").get(id)) as DbProject;
     return json({ project: toClientProject(row) });
   }
 
   if (!prompt) return error("Prompt is required");
 
-  const generated = generateProjectFromPrompt({
-    prompt,
-    framework,
-    seed: id,
-  });
-  generated.previewHtml = await maybeEnhanceWithOpenAI(prompt, generated.previewHtml);
-  if (body.name) generated.name = String(body.name);
+  const name = prompt
+    .replace(/^(build|create|make)\s+/i, "")
+    .split(/\s+/)
+    .slice(0, 5)
+    .join(" ")
+    .replace(/\b\w/g, (c: string) => c.toUpperCase())
+    .slice(0, 60) || "New app";
 
-  const fields = emptyProjectFields();
-  db.prepare(
-    `INSERT INTO projects (
-      id, user_id, name, description, prompt, framework, mode, phase,
-      github_connected, github_repo, deployed, deploy_url, deploy_slug,
-      agents_json, edges_json, messages_json, files_json, knowledge_json,
-      preview_html, traces_json, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'intent', 0, NULL, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    id,
-    user.id,
-    generated.name,
-    generated.description,
-    prompt,
-    framework,
-    mode,
-    fields.agents_json,
-    fields.edges_json,
-    JSON.stringify([
-      {
-        id: newId("msg"),
-        role: "user",
-        content: prompt,
-        timestamp: now,
-      },
-      {
-        id: newId("msg"),
-        role: "architect",
-        content: "Got it — planning the agent graph and generating your app…",
-        timestamp: now + 1,
-      },
-    ]),
-    fields.files_json,
-    fields.knowledge_json,
-    buildPreviewHtml({
-      name: generated.name,
+  const messages = [
+    {
+      id: newId("msg"),
+      role: "user",
+      content: prompt,
+      timestamp: now,
+    },
+    {
+      id: newId("msg"),
+      role: "architect",
+      content:
+        "Before I build anything, I'll ask a few short questions so the app matches how your team actually works.",
+      timestamp: now + 1,
+      meta: "Planning",
+    },
+  ];
+
+  await db
+    .prepare(
+      `INSERT INTO projects (
+        id, user_id, name, description, prompt, framework, mode, phase,
+        github_connected, github_repo, deployed, deploy_url, deploy_slug,
+        agents_json, edges_json, messages_json, files_json, knowledge_json,
+        preview_html, traces_json, connectors_json, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'planning', 0, NULL, 0, NULL, NULL, '[]', '[]', ?, '[]', '[]', '', '[]', ?, ?, ?)`,
+    )
+    .run(
+      id,
+      user.id,
+      name,
+      prompt.slice(0, 160),
       prompt,
-      agents: [],
-    }),
-    fields.traces_json,
-    now,
-    now,
-  );
+      framework,
+      mode,
+      JSON.stringify(messages),
+      JSON.stringify(Array.isArray(body.connectors) ? body.connectors : []),
+      now,
+      now,
+    );
 
-  // Persist full generation immediately; client animates phases
-  db.prepare(
-    `UPDATE projects SET
-      phase = ?, agents_json = ?, edges_json = ?, messages_json = ?,
-      files_json = ?, preview_html = ?, traces_json = ?, updated_at = ?
-     WHERE id = ? AND user_id = ?`,
-  ).run(
-    generated.phase,
-    JSON.stringify(generated.agents),
-    JSON.stringify(generated.edges),
-    JSON.stringify(generated.messages),
-    JSON.stringify(generated.files),
-    generated.previewHtml,
-    JSON.stringify(generated.traces),
-    Date.now(),
-    id,
-    user.id,
-  );
-
-  const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as DbProject;
-  return json({ project: toClientProject(row), generated: true });
+  const row = (await db.prepare("SELECT * FROM projects WHERE id = ?").get(id)) as DbProject;
+  return json({ project: toClientProject(row), planning: true });
 }

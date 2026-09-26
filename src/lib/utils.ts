@@ -64,12 +64,12 @@ export const FRAMEWORKS: {
 ];
 
 export const PHASES: { id: BuildPhase; label: string; tip: string }[] = [
-  { id: "intent", label: "Intent", tip: "Capture what success looks like" },
-  { id: "plan", label: "Plan", tip: "Shape requirements before code" },
-  { id: "agents", label: "Agents", tip: "Compose the agentic middle layer" },
-  { id: "ui", label: "UI", tip: "Generate the product surface" },
-  { id: "qa", label: "Self-heal", tip: "Run, catch, rewrite" },
-  { id: "ready", label: "Ready", tip: "Preview, iterate, ship" },
+  { id: "intent", label: "Intent", tip: "What you asked for" },
+  { id: "plan", label: "Plan", tip: "Decide what the app should do" },
+  { id: "agents", label: "Agents", tip: "Who does the work" },
+  { id: "ui", label: "App", tip: "The screen people will use" },
+  { id: "qa", label: "Check", tip: "Catch and fix problems" },
+  { id: "ready", label: "Ready", tip: "Use it, share it, ship it" },
 ];
 
 export function phaseIndex(phase: BuildPhase) {

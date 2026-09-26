@@ -11,8 +11,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const user = await getSessionUser();
   if (!user) return error("Unauthorized", 401);
   const { id } = await ctx.params;
-  const row = db
-    .prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?")
+  const row = await db.prepare("SELECT * FROM projects WHERE id = ? AND user_id = ?")
     .get(id, user.id) as DbProject | undefined;
   if (!row) return error("Not found", 404);
 

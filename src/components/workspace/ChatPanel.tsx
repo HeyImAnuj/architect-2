@@ -28,13 +28,8 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-line px-4 py-3">
-        <div className="text-sm font-semibold text-paper">Architect chat</div>
-        <div className="text-xs text-muted">
-          {mode === "soft"
-            ? "Describe outcomes — Architect reshapes agents + UI."
-            : "Request diffs, refactors, and framework-level changes."}
-        </div>
+      <div className="border-b border-line px-4 py-2">
+        <div className="text-[13px] font-medium text-paper">Architect chat</div>
       </div>
       <div className="scrollbar-thin flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {messages.map((m) => (

@@ -1,72 +1,68 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Activity,
-  Boxes,
-  Download,
-  FolderTree,
-  GitBranch,
-  Library,
-  MessageSquare,
-  Rocket,
-  Sparkles,
-  ArrowLeft,
-} from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import type { WorkspacePanel } from "@/lib/types";
-import { BuildTimeline } from "@/components/workspace/BuildTimeline";
+import { StudioChrome } from "@/components/studio/StudioSidebar";
 import { ChatPanel } from "@/components/workspace/ChatPanel";
 import { AgentGraph } from "@/components/workspace/AgentGraph";
 import { PreviewPanel } from "@/components/workspace/PreviewPanel";
 import { FilesPanel } from "@/components/workspace/FilesPanel";
 import { KnowledgePanel } from "@/components/workspace/KnowledgePanel";
 import { TracesPanel } from "@/components/workspace/TracesPanel";
+import { PlanFlow } from "@/components/workspace/PlanFlow";
+import { DataPanel } from "@/components/workspace/DataPanel";
 import { GitHubModal } from "@/components/workspace/GitHubModal";
 import { DeployModal } from "@/components/workspace/DeployModal";
 import { clientApi } from "@/lib/client-api";
-
-const NAV: {
-  id: WorkspacePanel;
-  label: string;
-  icon: typeof MessageSquare;
-  pro?: boolean;
-}[] = [
-  { id: "chat", label: "Chat", icon: MessageSquare },
-  { id: "agents", label: "Agents", icon: Boxes },
-  { id: "files", label: "Files", icon: FolderTree, pro: true },
-  { id: "knowledge", label: "Knowledge", icon: Library },
-  { id: "traces", label: "Traces", icon: Activity, pro: true },
-];
+import { isCenterTab, isStudioScreen, type CenterTab } from "@/lib/studio-catalog";
+import { CenterTabs } from "@/components/studio/CenterTabs";
+import { StudioPanels } from "@/components/studio/StudioPanels";
+import { useStudioComposer } from "@/components/studio/useStudioComposer";
 
 export default function WorkspacePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[calc(100dvh-2.75rem)] items-center justify-center text-sm text-muted">
+          Opening atelier…
+        </div>
+      }
+    >
+      <WorkspaceScreen />
+    </Suspense>
+  );
+}
+
+function WorkspaceScreen() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const hydrated = useAppStore((s) => s.hydrated);
   const user = useAppStore((s) => s.user);
   const project = useAppStore((s) => s.projects.find((p) => p.id === params.id));
   const buildingProjectId = useAppStore((s) => s.buildingProjectId);
-  const activePanel = useAppStore((s) => s.activePanel);
-  const setPanel = useAppStore((s) => s.setPanel);
-  const setMode = useAppStore((s) => s.setMode);
   const sendMessage = useAppStore((s) => s.sendMessage);
   const connectGithub = useAppStore((s) => s.connectGithub);
+  const importRepo = useAppStore((s) => s.importRepo);
   const deployProject = useAppStore((s) => s.deployProject);
   const updateProject = useAppStore((s) => s.updateProject);
   const addKnowledge = useAppStore((s) => s.addKnowledge);
   const updateFile = useAppStore((s) => s.updateFile);
-  const refreshProjects = useAppStore((s) => s.refreshProjects);
 
   const [githubOpen, setGithubOpen] = useState(false);
   const [deployOpen, setDeployOpen] = useState(false);
-  const [stage, setStage] = useState<"work" | "preview">("work");
   const [loadingMissing, setLoadingMissing] = useState(false);
+  const [openTabs, setOpenTabs] = useState<CenterTab[]>([]);
+  const [activeTab, setActiveTab] = useState<CenterTab | null>(null);
+  const lastQuery = useRef("");
+  const panelRequest = useAppStore((s) => s.panelRequest);
+  const workspaceAction = useAppStore((s) => s.workspaceAction);
+  const seenRequest = useRef(panelRequest?.nonce ?? 0);
+  const seenAction = useRef(workspaceAction?.nonce ?? 0);
 
   useEffect(() => {
-    if (hydrated && !user) router.replace("/auth");
+    if (hydrated && !user) router.replace("/auth", { transitionTypes: ["nav-forward"] });
   }, [hydrated, user, router]);
 
   useEffect(() => {
@@ -79,188 +75,198 @@ export default function WorkspacePage() {
           projects: [p, ...s.projects.filter((x) => x.id !== p.id)],
         }));
       })
-      .catch(() => router.replace("/home"))
+      .catch(() => router.replace("/home", { transitionTypes: ["nav-back"] }))
       .finally(() => setLoadingMissing(false));
   }, [hydrated, user, project, params.id, router]);
 
-  const building = buildingProjectId === project?.id;
-  const nav = useMemo(
-    () => NAV.filter((n) => project?.mode === "pro" || !n.pro),
-    [project?.mode],
-  );
+  function openTab(id: CenterTab) {
+    setOpenTabs((current) => (current.includes(id) ? current : [...current, id]));
+    setActiveTab(id);
+  }
+
+  function closeTab(id: CenterTab) {
+    const next = openTabs.filter((tab) => tab !== id);
+    const nextActive = activeTab === id ? (next[next.length - 1] ?? null) : activeTab;
+    setOpenTabs(next);
+    setActiveTab(nextActive);
+  }
+
+  const composer = useStudioComposer(openTab);
+
+  useEffect(() => {
+    if (!project) return;
+    const query = `${project.id}|${searchParams.toString()}`;
+    if (query === lastQuery.current) return;
+    const switchingProject = !lastQuery.current.startsWith(`${project.id}|`);
+    lastQuery.current = query;
+    const requested = searchParams.get("tab");
+    const action = searchParams.get("action");
+    if (action === "deploy") setDeployOpen(true);
+    if (action === "github") setGithubOpen(true);
+    if (switchingProject) {
+      const progress: CenterTab = project.phase === "planning" ? "plan" : "preview";
+      const tabs: CenterTab[] = [progress];
+      if (isCenterTab(requested) && requested !== progress) tabs.push(requested);
+      setOpenTabs(tabs);
+      setActiveTab(isCenterTab(requested) ? requested : progress);
+      return;
+    }
+    if (isCenterTab(requested)) openTab(requested);
+  }, [project, searchParams]);
+
+  useEffect(() => {
+    if (!panelRequest || panelRequest.nonce === seenRequest.current) return;
+    seenRequest.current = panelRequest.nonce;
+    if (!isCenterTab(panelRequest.id)) return;
+    openTab(panelRequest.id);
+  }, [panelRequest]);
+
+  useEffect(() => {
+    if (!workspaceAction || workspaceAction.nonce === seenAction.current) return;
+    seenAction.current = workspaceAction.nonce;
+    if (workspaceAction.type === "github") setGithubOpen(true);
+    if (workspaceAction.type === "deploy") setDeployOpen(true);
+  }, [workspaceAction]);
+
+  useEffect(() => {
+    if (activeTab && isStudioScreen(activeTab)) composer.noteScreen(activeTab);
+  }, [activeTab, composer.noteScreen]);
 
   if (!hydrated || !user || !project) {
     return (
-      <div className="blueprint-bg flex min-h-screen items-center justify-center text-sm text-muted">
-        {loadingMissing ? "Loading project…" : "Opening atelier…"}
-      </div>
+      <StudioChrome>
+        <div className="flex flex-1 items-center justify-center text-sm text-muted">
+          {loadingMissing ? "Loading project…" : "Opening atelier…"}
+        </div>
+      </StudioChrome>
     );
   }
 
+  const building = buildingProjectId === project.id;
+
   return (
-    <div className="blueprint-bg flex h-screen flex-col overflow-hidden">
-      <header className="flex items-center justify-between gap-3 border-b border-line bg-ink/80 px-4 py-3 backdrop-blur">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/home" className="btn btn-ghost px-2 py-2">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-panel-2">
-            <Sparkles className="h-3.5 w-3.5 text-mint" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate font-semibold text-paper">{project.name}</div>
-            <div className="mono truncate text-[10px] text-muted">
-              {project.framework} · {project.phase}
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden flex-1 justify-center px-4 lg:flex">
-          <div className="w-full max-w-xl">
-            <BuildTimeline phase={project.phase} building={building} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-line bg-ink-2 p-1">
-            {(["soft", "pro"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => {
-                  void setMode(project.id, m);
-                  if (m === "soft" && (activePanel === "files" || activePanel === "traces")) {
-                    setPanel("chat");
-                  }
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize ${
-                  project.mode === m ? "bg-mint text-[#042f2e]" : "text-muted"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-          <a
-            className="btn btn-ghost hidden sm:inline-flex"
-            href={`/api/projects/${project.id}/export`}
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </a>
-          <button
-            className="btn btn-ghost hidden sm:inline-flex"
-            onClick={() => setGithubOpen(true)}
-          >
-            <GitBranch className="h-4 w-4" />
-            {project.githubConnected ? "GitHub" : "Connect"}
-          </button>
-          <button className="btn btn-primary" onClick={() => setDeployOpen(true)}>
-            <Rocket className="h-4 w-4" />
-            Deploy
-          </button>
-        </div>
-      </header>
-
-      <div className="border-b border-line px-4 py-2 lg:hidden">
-        <BuildTimeline phase={project.phase} building={building} />
-      </div>
-
+    <StudioChrome>
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-16 flex-col items-center gap-2 border-r border-line bg-ink-2/80 py-3 md:w-44 md:items-stretch md:px-2">
-          {nav.map((item) => {
-            const active = activePanel === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setPanel(item.id);
-                  setStage("work");
-                }}
-                className={`flex items-center justify-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold md:justify-start md:px-3 ${
-                  active
-                    ? "bg-mint/15 text-mint"
-                    : "text-muted hover:bg-panel-2 hover:text-text"
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="hidden md:inline">{item.label}</span>
-              </button>
-            );
-          })}
-          <button
-            className={`mt-auto flex items-center justify-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold md:justify-start md:px-3 ${
-              stage === "preview"
-                ? "bg-cyan/15 text-cyan"
-                : "text-muted hover:bg-panel-2 hover:text-text"
-            }`}
-            onClick={() => setStage("preview")}
-          >
-            <span className="hidden md:inline">Focus preview</span>
-            <span className="md:hidden">UI</span>
-          </button>
-        </aside>
+        <section className="flex min-w-0 flex-1 flex-col bg-[#f7f8f9]">
+          {openTabs.length > 0 && (
+            <CenterTabs tabs={openTabs} active={activeTab} onFocus={openTab} onClose={closeTab} />
+          )}
 
-        <div className="grid min-h-0 min-w-0 flex-1 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="min-h-0 border-r border-line bg-panel/40">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activePanel + project.mode}
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 6 }}
-                transition={{ duration: 0.18 }}
-                className="h-full"
-              >
-                {activePanel === "chat" && (
-                  <ChatPanel
-                    messages={project.messages}
-                    mode={project.mode}
-                    onSend={(c) => void sendMessage(project.id, c)}
-                  />
-                )}
-                {activePanel === "agents" && (
-                  <AgentGraph
-                    agents={project.agents}
-                    edges={project.edges}
-                    building={building}
-                    onChange={(agents) => void updateProject(project.id, { agents })}
-                  />
-                )}
-                {activePanel === "files" && (
-                  <FilesPanel
-                    files={project.files}
-                    onSave={(path, content) => updateFile(project.id, path, content)}
-                  />
-                )}
-                {activePanel === "knowledge" && (
-                  <KnowledgePanel
-                    files={project.knowledgeFiles}
-                    onAdd={(file) => addKnowledge(project.id, file)}
-                  />
-                )}
-                {activePanel === "traces" && (
-                  <TracesPanel traces={project.traces || []} />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </section>
-
-          <section
-            className={`min-h-0 bg-ink/50 ${
-              stage === "preview" ? "fixed inset-0 z-40 lg:static" : "hidden lg:block"
+          <div
+            className={`min-h-0 flex-1 ${
+              activeTab && isStudioScreen(activeTab)
+                ? "overflow-y-auto bg-[#f7f8f9] px-6 py-8"
+                : "overflow-hidden bg-white"
             }`}
           >
-            {stage === "preview" && (
-              <div className="flex items-center justify-between border-b border-line bg-ink px-4 py-2 lg:hidden">
-                <span className="text-sm font-semibold">Preview</span>
-                <button className="btn btn-ghost" onClick={() => setStage("work")}>
-                  Close
-                </button>
+            {!activeTab && (
+              <div className="flex h-full items-center justify-center text-sm text-muted">
+                Open a view from the menu. This project stays open in its own tab.
               </div>
             )}
-            <PreviewPanel html={project.previewHtml} phase={project.phase} />
-          </section>
-        </div>
+            {activeTab && isStudioScreen(activeTab) && composer.user && (
+              <StudioPanels
+                screen={activeTab}
+                prompt={composer.prompt}
+                setPrompt={composer.setPrompt}
+                mode={composer.mode}
+                framework={composer.framework}
+                githubRepo={composer.githubRepo}
+                setGithubRepo={composer.setGithubRepo}
+                zipName={composer.zipName}
+                onZip={composer.readZip}
+                creating={composer.creating}
+                error={composer.error}
+                onCreate={() => void composer.handleCreate()}
+                projects={composer.projects}
+                onShare={(item) =>
+                  void composer.updateProject(item.id, {
+                    visibility: item.visibility === "shared" ? "private" : "shared",
+                  })
+                }
+                designId={composer.designId}
+                setDesignId={composer.setDesignId}
+                connectors={composer.connectors}
+                toggleConnector={(name) =>
+                  composer.setConnectors((current) =>
+                    current.includes(name) ? current.filter((item) => item !== name) : [...current, name],
+                  )
+                }
+                agentIds={composer.agentIds}
+                toggleAgent={(id) =>
+                  composer.setAgentIds((current) =>
+                    current.includes(id) ? current.filter((idItem) => idItem !== id) : [...current, id],
+                  )
+                }
+                attachmentName={composer.attachmentName}
+                onAttach={(file) => {
+                  composer.setAttachmentName(file.name);
+                  void file.text().then((text) => composer.setAttachment(text.slice(0, 4000)));
+                }}
+                listening={composer.listening}
+                onVoice={composer.toggleVoice}
+                onUsePrompt={(next) => {
+                  composer.setPrompt(next);
+                  openTab("prompt");
+                }}
+                credits={composer.credits}
+                onGrantCredits={() => composer.saveCredits(composer.credits + 10)}
+                userName={composer.user.name}
+                userEmail={composer.user.email}
+              />
+            )}
+            {activeTab === "preview" && (
+              <PreviewPanel html={project.previewHtml} phase={project.phase} />
+            )}
+            {activeTab === "plan" && project.phase === "planning" && (
+              <PlanFlow projectId={project.id} prompt={project.prompt} onBuilt={() => openTab("preview")} />
+            )}
+            {activeTab === "plan" && project.phase !== "planning" && (
+              <div className="h-full overflow-auto p-6">
+                <h2 className="text-lg font-semibold text-paper">Plan</h2>
+                <pre className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted">
+                  {project.planMarkdown || "The plan appears after you answer the setup questions."}
+                </pre>
+                {project.skillMarkdown && (
+                  <>
+                    <h3 className="mt-6 text-sm font-semibold text-paper">Agent rules</h3>
+                    <pre className="mt-2 whitespace-pre-wrap text-sm text-muted">{project.skillMarkdown}</pre>
+                  </>
+                )}
+              </div>
+            )}
+            {activeTab === "agents" && (
+              <AgentGraph
+                agents={project.agents}
+                edges={project.edges}
+                building={building}
+                onChange={(agents) => void updateProject(project.id, { agents })}
+              />
+            )}
+            {activeTab === "files" && (
+              <FilesPanel
+                files={project.files}
+                onSave={(path, content) => updateFile(project.id, path, content)}
+              />
+            )}
+            {activeTab === "knowledge" && (
+              <KnowledgePanel
+                files={project.knowledgeFiles}
+                onAdd={(file) => addKnowledge(project.id, file)}
+              />
+            )}
+            {activeTab === "data" && <DataPanel projectId={project.id} />}
+            {activeTab === "traces" && <TracesPanel traces={project.traces || []} />}
+          </div>
+        </section>
+
+        <aside className="flex w-[360px] shrink-0 flex-col border-l border-[#eceef2] bg-white max-lg:w-[300px]">
+          <ChatPanel
+            messages={project.messages}
+            mode={project.mode}
+            onSend={(content) => void sendMessage(project.id, content)}
+          />
+        </aside>
       </div>
 
       <GitHubModal
@@ -269,17 +275,19 @@ export default function WorkspacePage() {
         connected={project.githubConnected}
         repo={project.githubRepo}
         onConnect={async (repo) => connectGithub(project.id, repo)}
+        onImport={async (repo) => {
+          await importRepo(project.id, repo);
+          setGithubOpen(false);
+        }}
       />
       <DeployModal
         open={deployOpen}
-        onClose={() => {
-          setDeployOpen(false);
-          void refreshProjects();
-        }}
+        onClose={() => setDeployOpen(false)}
         deployed={project.deployed}
         url={project.deployUrl}
+        githubRepo={project.githubRepo}
         onDeploy={async (meta) => deployProject(project.id, meta)}
       />
-    </div>
+    </StudioChrome>
   );
 }

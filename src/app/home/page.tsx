@@ -1,356 +1,143 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowRight,
-  FolderGit2,
-  GitBranch,
-  LogOut,
-  Plus,
-  Sparkles,
-  Upload,
-  Zap,
-} from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
-import { FRAMEWORKS, formatRelative } from "@/lib/utils";
-import type { AudienceMode, FrameworkId } from "@/lib/types";
-import { PROMPT_STARTERS } from "@/lib/mock";
+import { isStudioScreen, type StudioScreen } from "@/lib/studio-catalog";
+import { StudioPanels } from "@/components/studio/StudioPanels";
+import { StudioChrome } from "@/components/studio/StudioSidebar";
+import { CenterTabs } from "@/components/studio/CenterTabs";
+import { useStudioComposer } from "@/components/studio/useStudioComposer";
 
-type ComposeTab = "prompt" | "github" | "zip" | "blank";
+const easeOut = [0.22, 1, 0.36, 1] as const;
 
 export default function HomePage() {
-  const router = useRouter();
-  const hydrated = useAppStore((s) => s.hydrated);
-  const user = useAppStore((s) => s.user);
-  const projects = useAppStore((s) => s.projects);
-  const createProject = useAppStore((s) => s.createProject);
-  const signOut = useAppStore((s) => s.signOut);
-  const refreshProjects = useAppStore((s) => s.refreshProjects);
+  return (
+    <Suspense fallback={<div className="blueprint-bg flex-1" />}>
+      <HomeScreen />
+    </Suspense>
+  );
+}
 
-  const [tab, setTab] = useState<ComposeTab>("prompt");
-  const [prompt, setPrompt] = useState("");
-  const [framework, setFramework] = useState<FrameworkId>("lyzr");
-  const [mode, setMode] = useState<AudienceMode>("soft");
-  const [githubRepo, setGithubRepo] = useState("acme/support-agents");
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function HomeScreen() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const hydrated = useAppStore((s) => s.hydrated);
+  const refreshProjects = useAppStore((s) => s.refreshProjects);
+  const panelRequest = useAppStore((s) => s.panelRequest);
+  const seenRequest = useRef(panelRequest?.nonce ?? 0);
+  const [openTabs, setOpenTabs] = useState<StudioScreen[]>(["prompt"]);
+  const [screen, setScreen] = useState<StudioScreen>("prompt");
+
+  function openTab(id: StudioScreen) {
+    setOpenTabs((current) => (current.includes(id) ? current : [...current, id]));
+    setScreen(id);
+  }
+
+  function closeTab(id: StudioScreen) {
+    const next = openTabs.filter((tab) => tab !== id);
+    const fallback = next[next.length - 1] ?? "prompt";
+    setOpenTabs(next.length ? next : ["prompt"]);
+    if (screen === id) setScreen(next.length ? fallback : "prompt");
+  }
+
+  const composer = useStudioComposer(openTab);
 
   useEffect(() => {
-    if (hydrated && !user) router.replace("/auth");
-    if (hydrated && user) void refreshProjects();
-  }, [hydrated, user, router, refreshProjects]);
+    if (hydrated && !composer.user) router.replace("/auth", { transitionTypes: ["nav-forward"] });
+    if (hydrated && composer.user) void refreshProjects();
+  }, [hydrated, composer.user, router, refreshProjects]);
 
-  const frameworks = useMemo(
-    () =>
-      FRAMEWORKS.filter((f) => mode === "pro" || f.audience === "both"),
-    [mode],
-  );
+  useEffect(() => {
+    composer.noteScreen(screen);
+  }, [screen, composer.noteScreen]);
 
-  async function handleCreate() {
-    setCreating(true);
-    setError(null);
-    try {
-      const source =
-        tab === "github"
-          ? "import-github"
-          : tab === "zip"
-            ? "import-zip"
-            : tab === "blank"
-              ? "blank"
-              : "prompt";
-      const id = await createProject({
-        prompt:
-          tab === "prompt"
-            ? prompt || PROMPT_STARTERS[0].prompt
-            : tab === "github"
-              ? `Continue building imported repo ${githubRepo}`
-              : tab === "zip"
-                ? "Imported local project — map agents and keep iterating"
-                : "Blank agentic canvas",
-        framework,
-        mode,
-        source,
-        githubRepo: tab === "github" ? githubRepo : undefined,
-      });
-      router.push(`/workspace/${id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project");
-      setCreating(false);
-    }
+  useEffect(() => {
+    const view = searchParams.get("view");
+    if (!isStudioScreen(view)) return;
+    openTab(view);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!panelRequest || panelRequest.nonce === seenRequest.current) return;
+    seenRequest.current = panelRequest.nonce;
+    if (!isStudioScreen(panelRequest.id)) return;
+    openTab(panelRequest.id);
+  }, [panelRequest]);
+
+  if (!hydrated || !composer.user) {
+    return <div className="blueprint-bg flex-1" />;
   }
 
-  if (!hydrated || !user) {
-    return <div className="blueprint-bg min-h-screen" />;
-  }
+  const user = composer.user;
 
   return (
-    <div className="blueprint-bg min-h-screen">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-panel-2">
-            <Sparkles className="h-4 w-4 text-mint" />
-          </div>
-          <div>
-            <div className="display text-lg font-bold leading-none">Architect</div>
-            <div className="mono text-[10px] uppercase tracking-[0.18em] text-muted">
-              studio home
-            </div>
-          </div>
-        </Link>
-        <div className="flex items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <div className="text-sm font-semibold text-paper">{user.name}</div>
-            <div className="text-xs text-muted">{user.email}</div>
-          </div>
-          <button
-            className="btn btn-ghost"
-            onClick={async () => {
-              await signOut();
-              router.push("/");
-            }}
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto grid max-w-6xl gap-6 px-6 pb-16 lg:grid-cols-[1.2fr_0.8fr]">
-        <section className="panel p-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h1 className="display text-3xl font-bold text-paper">Compose</h1>
-              <p className="mt-1 text-sm text-muted">
-                Start from intent, import an existing project, or open a blank canvas.
-              </p>
-            </div>
-            <div className="flex rounded-xl border border-line bg-ink-2 p-1">
-              {(
-                [
-                  ["soft", "Soft"],
-                  ["pro", "Pro"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  onClick={() => setMode(id)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                    mode === id
-                      ? "bg-mint text-[#042f2e]"
-                      : "text-muted hover:text-text"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            {(
-              [
-                ["prompt", "Prompt", Zap],
-                ["github", "Import GitHub", GitBranch],
-                ["zip", "Import zip", Upload],
-                ["blank", "Blank", Plus],
-              ] as const
-            ).map(([id, label, Icon]) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-                  tab === id
-                    ? "border-mint/40 bg-mint/10 text-mint"
-                    : "border-line bg-ink-2 text-muted hover:text-text"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <AnimatePresence mode="wait">
+    <StudioChrome>
+      <section className="flex min-h-0 flex-1 flex-col bg-[#f7f8f9]">
+        <CenterTabs tabs={openTabs} active={screen} onFocus={openTab} onClose={closeTab} />
+        <main className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={tab}
-              initial={{ opacity: 0, y: 8 }}
+              key={screen}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="mt-5"
+              transition={{ duration: 0.34, ease: easeOut }}
             >
-              {tab === "prompt" && (
-                <div className="grid gap-3">
-                  <textarea
-                    className="textarea min-h-[140px]"
-                    placeholder="Describe the agentic app you want…"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                  />
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {PROMPT_STARTERS.map((starter) => (
-                      <button
-                        key={starter.title}
-                        onClick={() => setPrompt(starter.prompt)}
-                        className="rounded-xl border border-line bg-ink-2 p-3 text-left hover:border-cyan/40"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-paper">
-                            {starter.title}
-                          </span>
-                          <span className="chip">{starter.tag}</span>
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-xs text-muted">
-                          {starter.prompt}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {tab === "github" && (
-                <div className="grid gap-3">
-                  <label className="text-sm text-muted">Repository</label>
-                  <input
-                    className="input mono"
-                    value={githubRepo}
-                    onChange={(e) => setGithubRepo(e.target.value)}
-                    placeholder="org/repo"
-                  />
-                  <p className="text-sm text-muted">
-                    Dummy OAuth flow: we&apos;ll map the repo into Architect, keep
-                    working in Soft/Pro, and sync branches later from the workspace.
-                  </p>
-                </div>
-              )}
-
-              {tab === "zip" && (
-                <div className="rounded-2xl border border-dashed border-line bg-ink-2 p-8 text-center">
-                  <Upload className="mx-auto h-8 w-8 text-cyan" />
-                  <p className="mt-3 text-sm text-paper">Drop a project zip</p>
-                  <p className="mt-1 text-xs text-muted">
-                    Demo accepts any click — we simulate parsing structure + agents.
-                  </p>
-                  <button className="btn btn-soft mt-4" onClick={handleCreate}>
-                    Simulate import
-                  </button>
-                </div>
-              )}
-
-              {tab === "blank" && (
-                <div className="rounded-2xl border border-line bg-ink-2 p-6">
-                  <FolderGit2 className="h-6 w-6 text-mint" />
-                  <h3 className="mt-3 font-semibold text-paper">Blank agentic canvas</h3>
-                  <p className="mt-1 text-sm text-muted">
-                    For technical users who want to scaffold first, or Soft users who
-                    want to explore the atelier before committing an idea.
-                  </p>
-                </div>
-              )}
+              <StudioPanels
+                screen={screen}
+                prompt={composer.prompt}
+                setPrompt={composer.setPrompt}
+                mode={composer.mode}
+                framework={composer.framework}
+                githubRepo={composer.githubRepo}
+                setGithubRepo={composer.setGithubRepo}
+                zipName={composer.zipName}
+                onZip={composer.readZip}
+                creating={composer.creating}
+                error={composer.error}
+                onCreate={() => void composer.handleCreate()}
+                projects={composer.projects}
+                onShare={(project) =>
+                  void composer.updateProject(project.id, {
+                    visibility: project.visibility === "shared" ? "private" : "shared",
+                  })
+                }
+                designId={composer.designId}
+                setDesignId={composer.setDesignId}
+                connectors={composer.connectors}
+                toggleConnector={(name) =>
+                  composer.setConnectors((current) =>
+                    current.includes(name) ? current.filter((item) => item !== name) : [...current, name],
+                  )
+                }
+                agentIds={composer.agentIds}
+                toggleAgent={(id) =>
+                  composer.setAgentIds((current) =>
+                    current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+                  )
+                }
+                attachmentName={composer.attachmentName}
+                onAttach={(file) => {
+                  composer.setAttachmentName(file.name);
+                  void file.text().then((text) => composer.setAttachment(text.slice(0, 4000)));
+                }}
+                listening={composer.listening}
+                onVoice={composer.toggleVoice}
+                onUsePrompt={(next) => {
+                  composer.setPrompt(next);
+                  openTab("prompt");
+                }}
+                credits={composer.credits}
+                onGrantCredits={() => composer.saveCredits(composer.credits + 10)}
+                userName={user.name}
+                userEmail={user.email}
+              />
             </motion.div>
           </AnimatePresence>
-
-          <div className="mt-5">
-            <div className="mb-2 text-sm font-semibold text-paper">Agent framework</div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {frameworks.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFramework(f.id)}
-                  className={`rounded-xl border p-3 text-left transition ${
-                    framework === f.id
-                      ? "border-mint/50 bg-mint/10"
-                      : "border-line bg-ink-2 hover:border-cyan/30"
-                  }`}
-                >
-                  <div className="text-sm font-semibold text-paper">{f.label}</div>
-                  <div className="mt-1 text-xs text-muted">{f.blurb}</div>
-                </button>
-              ))}
-            </div>
-            {mode === "soft" && (
-              <p className="mt-2 text-xs text-muted">
-                Soft mode shows approachable frameworks. Switch to Pro for LangGraph,
-                AutoGen, OpenAI Agents, and BYO.
-              </p>
-            )}
-          </div>
-
-          {tab !== "zip" && (
-            <>
-              {error && (
-                <div className="mt-4 rounded-xl border border-rose/40 bg-rose/10 px-3 py-2 text-sm text-rose">
-                  {error}
-                </div>
-              )}
-              <button
-                className="btn btn-primary mt-6"
-                onClick={handleCreate}
-                disabled={creating}
-              >
-                {creating ? "Building project…" : "Create project"}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </>
-          )}
-          {tab === "zip" && error && (
-            <div className="mt-4 rounded-xl border border-rose/40 bg-rose/10 px-3 py-2 text-sm text-rose">
-              {error}
-            </div>
-          )}
-        </section>
-
-        <section className="grid gap-4 self-start">
-          <div className="panel p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-paper">Your projects</h2>
-              <span className="chip">{projects.length}</span>
-            </div>
-            <div className="mt-4 grid gap-2">
-              {projects.length === 0 && (
-                <p className="text-sm text-muted">No projects yet — compose one.</p>
-              )}
-              {projects.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/workspace/${p.id}`}
-                  className="rounded-xl border border-line bg-ink-2 p-3 transition hover:border-cyan/40"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-semibold text-paper">{p.name}</div>
-                      <div className="mt-1 line-clamp-2 text-xs text-muted">
-                        {p.description}
-                      </div>
-                    </div>
-                    <span className="chip chip-mint capitalize">{p.mode}</span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted">
-                    <span className="chip">{p.framework}</span>
-                    <span className="chip">{p.phase}</span>
-                    {p.githubConnected && <span className="chip">GitHub</span>}
-                    {p.deployed && <span className="chip">Deployed</span>}
-                    <span className="ml-auto">{formatRelative(p.updatedAt)}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="panel p-5">
-            <h3 className="font-semibold text-paper">Product thinking</h3>
-            <ul className="mt-3 space-y-2 text-sm text-muted">
-              <li>Non-tech starts on Soft with curated frameworks.</li>
-              <li>Tech starts on Pro with import + BYO frameworks.</li>
-              <li>Same project ID — they can switch lanes anytime.</li>
-            </ul>
-          </div>
-        </section>
-      </main>
-    </div>
+        </main>
+      </section>
+    </StudioChrome>
   );
 }

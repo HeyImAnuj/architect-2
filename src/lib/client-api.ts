@@ -84,13 +84,44 @@ export const clientApi = {
       body: JSON.stringify(meta || {}),
     }),
   github: (id: string, repo: string) =>
-    api<{ project: Project; gistUrl?: string; message: string }>(
+    api<{ project: Project; repoUrl?: string; message: string }>(
       `/api/projects/${id}/github`,
       {
         method: "POST",
         body: JSON.stringify({ repo }),
       },
     ),
+  importRepo: (id: string, repo: string) =>
+    api<{ project: Project }>(`/api/projects/${id}/import`, {
+      method: "POST",
+      body: JSON.stringify({ repo }),
+    }),
+  build: (id: string, answers: Record<string, string | string[]>) =>
+    api<{ project: Project }>(`/api/projects/${id}/generate`, {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    }),
+  records: (id: string) =>
+    api<{ tables: Record<string, { id: string; createdAt: number; data: Record<string, unknown> }[]> }>(
+      `/api/projects/${id}/records`,
+    ),
+  addRecord: (id: string, table: string, data: Record<string, unknown>) =>
+    api<{ ok: boolean }>(`/api/projects/${id}/records`, {
+      method: "POST",
+      body: JSON.stringify({ table, data }),
+    }),
+  duplicate: (id: string) =>
+    api<{ project: Project }>(`/api/projects/${id}/duplicate`, { method: "POST" }),
+  forgot: (email: string) =>
+    api<{ ok: boolean; resetUrl?: string; message: string }>("/api/auth", {
+      method: "POST",
+      body: JSON.stringify({ action: "forgot", email }),
+    }),
+  reset: (token: string, password: string) =>
+    api<{ ok: boolean }>("/api/auth", {
+      method: "POST",
+      body: JSON.stringify({ action: "reset", token, password }),
+    }),
 };
 
 export type { AudienceMode, WorkspacePanel, AgentNode, KnowledgeFile, CodeFile };

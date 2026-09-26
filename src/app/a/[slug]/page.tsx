@@ -5,8 +5,7 @@ type Props = { params: Promise<{ slug: string }> };
 
 export default async function PublishedAppPage({ params }: Props) {
   const { slug } = await params;
-  const row = db
-    .prepare("SELECT html, name FROM published_apps WHERE slug = ?")
+  const row = await db.prepare("SELECT html, name FROM published_apps WHERE slug = ?")
     .get(slug) as { html: string; name: string } | undefined;
 
   if (!row) notFound();
@@ -15,7 +14,7 @@ export default async function PublishedAppPage({ params }: Props) {
     <iframe
       title={row.name}
       srcDoc={row.html}
-      className="fixed inset-0 h-screen w-screen border-0 bg-black"
+      className="h-[calc(100dvh-2.75rem)] w-full border-0 bg-black"
       sandbox="allow-scripts allow-forms allow-modals allow-same-origin"
     />
   );
