@@ -3,7 +3,8 @@
 Architect 2.0 is a dual-lane studio for **agentic applications**. One project holds the plan, the flow, the agents, the preview, and the source. Soft is for people who want the app. Pro is for people who also want the files, the framework, and GitHub.
 
 **Live app:** https://architect-2-kohl.vercel.app  
-**GitHub:** https://github.com/HeyImAnuj/architect-2
+**GitHub:** https://github.com/HeyImAnuj/architect-2  
+**Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md) and [docs/architecture-diagram.png](docs/architecture-diagram.png)
 
 The old address `https://architect-2-sand.vercel.app` belongs to a previous Vercel account and is not this deployment.
 
