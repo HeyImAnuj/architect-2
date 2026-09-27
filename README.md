@@ -49,7 +49,72 @@ Start the same way, then switch **Lane** to Pro and pick a framework: LangGraph,
 | GitHub and deploy | Connect, push, and publish the project selected in the top bar. |
 | My projects | Rename and delete. |
 
-Connectors such as Gmail and Slack on the home prompt are choices stored with the project. They are not live logins to those products. Studio credits are a local counter (12 per new project, add 10 from Settings). Generation uses OpenAI when `OPENAI_API_KEY` is set; if that call fails, Architect falls back to a template and says so.
+Connectors such as Gmail and Slack on the home prompt are choices stored with the project. They are not live logins to those products. Studio credits are a local counter (200 to start, 12 per new project, add 10 from Settings). Generation uses OpenAI when `OPENAI_API_KEY` is set; if that call fails, Architect falls back to a template and says so. GitHub sign-in creates a repository and pushes the project files. It is not a full git working tree inside the editor.
+
+## Features
+
+### Account
+
+- Create an account with your name, email, and password.
+- Log in, sign out, and continue as a guest. A guest keeps a name and is not a permanent account.
+- Request a password reset. Architect returns a private reset link for that email.
+- Sessions are stored in Postgres.
+
+### Studio
+
+- Left menu for Agent Studio, projects, workspace views, usage, getting started, resources, lane, and framework.
+- Top bar with the current project. The menu shows four projects, then scrolls, and keeps **+ Create new** in place.
+- **+ Create new** opens the prompt. If a project is already open, Architect asks you to save or cancel first.
+- Settings: Night theme (the default) or Bright, studio credits, My account, Help, and Sign out.
+- A drawer menu on a narrow screen.
+- Closable chat on the right while a project is open. Hide it with the minus control.
+
+### Starting a project
+
+- Prompt with example starters, a typing hint, and Enter to send. Shift+Enter adds a line.
+- Attach a text, markdown, CSV, or JSON file as context.
+- Voice input when the browser provides speech recognition.
+- Studio agents you can turn on from the plus menu: Researcher, Writer, Reviewer, and Router.
+- Connectors you can record with the prompt (Gmail, Slack, Notion, Calendar, HubSpot, GitHub, Sheets, Linear). These stay as choices on the project.
+- Import an existing GitHub repository.
+- Import a zip of source files.
+- Blank canvas opens an empty **Flow** named Untitled. Build renames Untitled when it generates the app.
+- Design systems: Quiet paper, Ink dashboard, Editorial, and Field notes.
+- Prompt library, marketplace starters, “what should I build” ideas, how-it-works, docs, Lyzr University notes, and a Discord link.
+
+### Lanes and frameworks
+
+- Soft stays on the outcome: prompt, plan, flow, preview, and chat.
+- Pro uses the same project and adds framework choice, files, activity, GitHub, and deploy.
+- Frameworks for both lanes: Lyzr Agents and CrewAI.
+- Extra Pro frameworks: LangGraph, AutoGen, OpenAI Agents, and Custom.
+
+### Plan, flow, and agents
+
+- A short plan before the first build.
+- Flow canvas: drag steps, zoom, add a step, and connect by dragging a dot from one step to another.
+- Click a step or a connection to edit it. Save or Enter keeps the change. Cancel or Escape throws it away. Shift+Enter adds a line in a description.
+- **Build** follows that flow and opens the preview.
+- Agent canvas: drag cards, zoom, and connect any agent to any other. Edit a card or a line in a popup with the same Save and Cancel behavior.
+- Activity lists what each agent did.
+
+### The working app
+
+- Preview is a page you can use in the browser.
+- Chat can change that preview. Soft replies talk about the app. If the model does not answer, a template still produces a usable preview and the chat says so.
+- Knowledge holds notes the project should trust.
+- Data holds records for that project.
+- Files shows the generated source. Edit a file and save it.
+- Usage counts projects, published apps, shared apps, and trace events.
+
+### Projects, publish, and GitHub
+
+- My projects lists everything you started. The pencil renames a project (Save, Cancel, or Enter). The trash deletes it after a confirmation.
+- Share marks a project so it also appears under Shared. Unshare removes that mark. Published lists apps you have deployed.
+- The project in the top bar is the one Export, GitHub, and Deploy use.
+- Export downloads a zip of the source, `preview.html`, and a small metadata file.
+- GitHub signs you in through a popup, creates a repository, and pushes the project files.
+- Deploy publishes a public preview at `/a/…` and shows the GitHub repository URL when one exists.
 
 ## Run it yourself
 
