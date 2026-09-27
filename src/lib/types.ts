@@ -52,6 +52,26 @@ export interface AgentEdge {
   label?: string;
 }
 
+export interface FlowNode {
+  id: string;
+  title: string;
+  detail: string;
+  x: number;
+  y: number;
+}
+
+export interface FlowEdge {
+  id: string;
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface AppWorkflow {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "architect" | "system";
@@ -99,6 +119,7 @@ export interface Project {
   deploySlug?: string;
   agents: AgentNode[];
   edges: AgentEdge[];
+  workflow?: AppWorkflow;
   messages: ChatMessage[];
   files: CodeFile[];
   previewHtml: string;

@@ -1,14 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   GraduationCap,
   Mic,
   Paperclip,
+  Pencil,
   Plus,
-  Sparkles,
+  Trash2,
   Upload,
 } from "lucide-react";
 import type { AudienceMode, FrameworkId, Project } from "@/lib/types";
@@ -28,6 +30,47 @@ import {
   STUDIO_AGENTS,
   type StudioScreen,
 } from "@/lib/studio-catalog";
+
+const PROMPT_HINTS = [
+  "A support desk that drafts replies and asks a human when it is unsure",
+  "An SDR desk that researches accounts and writes the next step",
+  "A policy copilot that answers from the documents I upload",
+  "A pipeline reviewer that flags risk and drafts a Monday brief",
+];
+
+function useTypingHint(active: boolean) {
+  const [hint, setHint] = useState("");
+  useEffect(() => {
+    if (!active) return;
+    let phrase = 0;
+    let count = 0;
+    let deleting = false;
+    let timer = 0;
+    const tick = () => {
+      const text = PROMPT_HINTS[phrase];
+      if (!deleting) {
+        count += 1;
+        setHint(text.slice(0, count));
+        if (count >= text.length) {
+          deleting = true;
+          timer = window.setTimeout(tick, 1600);
+          return;
+        }
+      } else {
+        count -= 1;
+        setHint(text.slice(0, Math.max(count, 0)));
+        if (count <= 0) {
+          deleting = false;
+          phrase = (phrase + 1) % PROMPT_HINTS.length;
+        }
+      }
+      timer = window.setTimeout(tick, deleting ? 22 : 38);
+    };
+    timer = window.setTimeout(tick, 500);
+    return () => window.clearTimeout(timer);
+  }, [active]);
+  return hint;
+}
 
 const titles: Record<StudioScreen, { title: string; body: string }> = {
   prompt: {
@@ -119,6 +162,8 @@ export function StudioPanels({
   onCreate,
   projects,
   onShare,
+  onRename,
+  onDelete,
   designId,
   setDesignId,
   connectors,
@@ -149,6 +194,8 @@ export function StudioPanels({
   onCreate: () => void;
   projects: Project[];
   onShare: (project: Project) => void;
+  onRename: (project: Project, name: string) => void;
+  onDelete: (project: Project) => Promise<void> | void;
   designId: string;
   setDesignId: (id: string) => void;
   connectors: string[];
@@ -166,8 +213,17 @@ export function StudioPanels({
   userEmail: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
   const [plusOpen, setPlusOpen] = useState(false);
   const [lesson, setLesson] = useState(0);
+  const hint = useTypingHint(screen === "prompt" && !prompt.trim());
+  useEffect(() => {
+    const field = fieldRef.current;
+    if (!field) return;
+    field.style.height = "0px";
+    field.style.height = `${field.scrollHeight}px`;
+  }, [prompt]);
+  const firstName = userName.trim().split(/\s+/)[0] || "there";
   const copy = titles[screen];
   const design = DESIGN_SYSTEMS.find((item) => item.id === designId) ?? DESIGN_SYSTEMS[0];
   const frameworkLabel = FRAMEWORKS.find((item) => item.id === framework)?.label ?? framework;
@@ -185,11 +241,8 @@ export function StudioPanels({
     <div className={centered ? "mx-auto w-full max-w-[640px] pt-14 text-center" : "mx-auto w-full max-w-3xl"}>
       {centered ? (
         <>
-          <Sparkles className="mx-auto h-7 w-7 text-[#5b6472]" />
-          <h2 className="display mt-3 text-[3.25rem] text-paper">Architect</h2>
-          <p className="mx-auto mt-2 text-sm text-muted">
-            Describe an agentic app. Architect plans it with you.
-          </p>
+          <h2 className="display text-[2.75rem] text-paper">Hi {firstName},</h2>
+          <p className="mx-auto mt-2 text-[15px] text-muted">What do you want to build today?</p>
         </>
       ) : (
         <>
@@ -201,87 +254,105 @@ export function StudioPanels({
       <div className={centered ? "mt-8 text-left" : "mt-8"}>
         {screen === "prompt" && (
           <div className="grid gap-6">
-            <div className="rounded-[20px] border border-[#e7e9ee] bg-white p-3 shadow-[0_8px_30px_rgba(17,24,39,0.05)]">
-              <textarea
-                className="textarea min-h-[72px] border-0 bg-transparent px-2 py-1 shadow-none"
-                placeholder="Describe the agentic app you want…"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-              />
-              <div className="mt-1 flex items-center justify-between gap-2">
-                <div className="relative">
-                  <button
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[#5b6472] hover:bg-[#f3f4f6]"
-                    onClick={() => setPlusOpen((open) => !open)}
-                    aria-expanded={plusOpen}
+            <div className="flex items-end gap-1 rounded-[24px] border border-[#e7e9ee] bg-white py-1.5 pl-1.5 pr-1.5 shadow-[0_8px_30px_rgba(17,24,39,0.06)] transition-[border-radius] duration-300">
+              <button
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#5b6472] hover:bg-[#f3f4f6]"
+                onClick={() => setPlusOpen((open) => !open)}
+                aria-label="Add context"
+                aria-expanded={plusOpen}
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <div className="relative min-w-0 flex-1">
+                {!prompt && (
+                  <span className="pointer-events-none absolute inset-y-0 left-1 flex items-center truncate pr-2 text-sm text-[#9aa3af]">
+                    {hint}
+                    <span className="ml-0.5 inline-block h-4 w-px bg-[#9aa3af]" />
+                  </span>
+                )}
+                <textarea
+                  ref={fieldRef}
+                  className="composer-field block min-h-10 w-full resize-none border-0 bg-transparent px-1 py-2 text-sm leading-5 text-paper outline-none"
+                  rows={1}
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      onCreate();
+                    }
+                  }}
+                />
+                <AnimatePresence>
+                {plusOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute bottom-12 left-0 z-20 max-h-72 w-72 overflow-y-auto rounded-xl border border-line bg-white p-3 text-left shadow-[var(--shadow)]"
                   >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                  {plusOpen && (
-                    <div className="absolute left-0 z-20 mt-2 w-72 rounded-xl border border-line bg-white p-3 shadow-[var(--shadow)]">
-                      <button
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-panel-2"
-                        onClick={() => fileRef.current?.click()}
-                      >
-                        <Paperclip className="h-4 w-4 text-mint" />
-                        Attach a file
-                      </button>
-                      <p className="px-2 pb-2 text-[11px] text-muted">
-                        Text, markdown, CSV, or JSON. Architect keeps it as context for the plan.
-                      </p>
-                      <div className="border-t border-line pt-2">
-                        <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-                          Studio agents
-                        </div>
-                        {STUDIO_AGENTS.map((agent) => (
-                          <button
-                            key={agent.id}
-                            className={`mt-1 w-full rounded-lg px-2 py-2 text-left ${
-                              agentIds.includes(agent.id) ? "bg-mint/10" : "hover:bg-panel-2"
-                            }`}
-                            onClick={() => toggleAgent(agent.id)}
-                          >
-                            <div className="text-sm font-semibold text-paper">{agent.name}</div>
-                            <div className="text-[11px] text-muted">{agent.note}</div>
-                          </button>
-                        ))}
+                    <button
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-panel-2"
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      <Paperclip className="h-4 w-4 text-mint" />
+                      Attach a file
+                    </button>
+                    <p className="px-2 pb-2 text-[11px] text-muted">
+                      Text, markdown, CSV, or JSON. Architect keeps it as context for the plan.
+                    </p>
+                    <div className="border-t border-line pt-2">
+                      <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                        Studio agents
                       </div>
+                      {STUDIO_AGENTS.map((agent) => (
+                        <button
+                          key={agent.id}
+                          className={`mt-1 w-full rounded-lg px-2 py-2 text-left ${
+                            agentIds.includes(agent.id) ? "bg-mint/10" : "hover:bg-panel-2"
+                          }`}
+                          onClick={() => toggleAgent(agent.id)}
+                        >
+                          <div className="text-sm font-semibold text-paper">{agent.name}</div>
+                          <div className="text-[11px] text-muted">{agent.note}</div>
+                        </button>
+                      ))}
                     </div>
-                  )}
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".txt,.md,.csv,.json,text/plain"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) onAttach(file);
-                      setPlusOpen(false);
-                    }}
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    className={`flex h-8 w-8 items-center justify-center rounded-full ${listening ? "bg-mint/10 text-mint" : "text-[#5b6472] hover:bg-[#f3f4f6]"}`}
-                    onClick={onVoice}
-                    aria-label="Dictate"
-                  >
-                    <Mic className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-mint text-white disabled:opacity-60"
-                    onClick={onCreate}
-                    disabled={creating}
-                    aria-label="Build"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
+                  </motion.div>
+                )}
+                </AnimatePresence>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".txt,.md,.csv,.json,text/plain"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) onAttach(file);
+                    setPlusOpen(false);
+                  }}
+                />
               </div>
-              {attachmentName && (
-                <p className="mt-2 text-xs text-muted">Attached · {attachmentName}</p>
-              )}
+              <button
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${listening ? "bg-mint/10 text-mint" : "text-[#5b6472] hover:bg-[#f3f4f6]"}`}
+                onClick={onVoice}
+                aria-label="Voice"
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+              <button
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mint text-white disabled:opacity-60"
+                onClick={onCreate}
+                disabled={creating}
+                aria-label="Send"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
+            {attachmentName && (
+              <p className="-mt-3 text-center text-xs text-muted">Attached · {attachmentName}</p>
+            )}
 
             <div className="text-center">
               <div className="text-xs text-muted">Connect with</div>
@@ -380,6 +451,8 @@ export function StudioPanels({
                   : "No projects yet. Start one in Agent Studio."
             }
             onShare={screen === "mine" ? onShare : undefined}
+            onRename={screen === "mine" ? onRename : undefined}
+            onDelete={screen === "mine" ? onDelete : undefined}
           />
         )}
 
@@ -577,28 +650,93 @@ function ProjectList({
   projects,
   empty,
   onShare,
+  onRename,
+  onDelete,
 }: {
   projects: Project[];
   empty: string;
   onShare?: (project: Project) => void;
+  onRename?: (project: Project, name: string) => void;
+  onDelete?: (project: Project) => Promise<void> | void;
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   if (projects.length === 0) {
     return <p className="text-sm text-muted">{empty}</p>;
   }
+
+  function startEdit(project: Project) {
+    setEditingId(project.id);
+    setDraft(project.name);
+  }
+
+  async function saveName(project: Project) {
+    const name = draft.trim();
+    if (!name || !onRename) return;
+    setSaving(true);
+    try {
+      await onRename(project, name);
+      setEditingId(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="grid gap-3">
       {projects.map((project) => (
         <div key={project.id} className="rounded-xl border border-line bg-white p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <Link
-              href={`/workspace/${project.id}`}
-              transitionTypes={["nav-forward"]}
-              className="min-w-0"
-            >
-              <div className="font-semibold text-paper">{project.name}</div>
-              <p className="mt-1 line-clamp-2 text-xs text-muted">{project.description}</p>
-            </Link>
-            <span className="chip chip-mint capitalize">{project.mode}</span>
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              {editingId === project.id ? (
+                <form
+                  className="flex flex-wrap items-center gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void saveName(project);
+                  }}
+                >
+                  <input
+                    className="input min-w-0 flex-1 py-2"
+                    value={draft}
+                    autoFocus
+                    aria-label="Project name"
+                    onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setEditingId(null);
+                    }}
+                  />
+                  <button type="submit" className="h-8 rounded-md bg-mint px-3 text-[13px] font-medium text-white disabled:opacity-60" disabled={saving || !draft.trim()}>
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                  <button type="button" className="h-8 rounded-md px-2 text-[13px] text-muted hover:bg-panel-2" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <Link href={`/workspace/${project.id}`} transitionTypes={["nav-forward"]} className="block min-w-0">
+                  <div className="truncate font-semibold text-paper">{project.name}</div>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted">{project.description}</p>
+                </Link>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {editingId !== project.id && onRename && (
+                <button type="button" className="rounded-md p-1 text-muted hover:bg-panel-2" aria-label={`Rename ${project.name}`} onClick={() => startEdit(project)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {editingId !== project.id && onDelete && (
+                <button type="button" className="rounded-md p-1 text-rose hover:bg-panel-2" aria-label={`Delete ${project.name}`} onClick={() => setPendingDelete(project)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <span className="chip chip-mint ml-1 capitalize">{project.mode}</span>
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted">
             <span className="chip">{project.framework}</span>
@@ -614,6 +752,35 @@ function ProjectList({
           </div>
         </div>
       ))}
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={() => !deleting && setPendingDelete(null)}>
+          <div className="panel w-full max-w-sm p-4" onMouseDown={(event) => event.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-paper">Delete this project?</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {pendingDelete.name} will be removed. This cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" className="h-8 rounded-md px-3 text-[13px] text-muted hover:bg-panel-2" disabled={deleting} onClick={() => setPendingDelete(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="h-8 rounded-md bg-rose px-3 text-[13px] font-medium text-white disabled:opacity-60"
+                disabled={deleting}
+                onClick={() => {
+                  const project = pendingDelete;
+                  setDeleting(true);
+                  void Promise.resolve(onDelete?.(project))
+                    .then(() => setPendingDelete(null))
+                    .finally(() => setDeleting(false));
+                }}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { error, json } from "@/lib/api";
 import { toClientProject } from "@/lib/project-mapper";
 import { buildPlanArtifacts } from "@/lib/plan";
 import { buildApp } from "@/lib/llm";
-import type { FrameworkId, KnowledgeFile } from "@/lib/types";
+import type { AppWorkflow, FrameworkId, KnowledgeFile } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -20,6 +20,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   const body = await req.json().catch(() => ({}));
   const answers = (body.answers || {}) as Record<string, string | string[]>;
+  const workflow = body.workflow as AppWorkflow | undefined;
+  const flowText = workflow?.nodes?.length
+    ? workflow.nodes
+        .map((node) => {
+          const next = (workflow.edges || [])
+            .filter((edge) => edge.from === node.id)
+            .map((edge) => {
+              const target = workflow.nodes.find((item) => item.id === edge.to);
+              return `${edge.label || "then"} → ${target?.title || edge.to}`;
+            })
+            .join("; ");
+          return `- ${node.title}: ${node.detail}${next ? `. Next: ${next}` : ""}`;
+        })
+        .join("\n")
+    : "";
   const artifacts = buildPlanArtifacts({
     name: row.name,
     prompt: row.prompt,
@@ -28,7 +43,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   const knowledge = JSON.parse(row.knowledge_json || "[]") as KnowledgeFile[];
   const generated = await buildApp({
-    prompt: `${row.prompt}\n\nPlan:\n${artifacts.plan}`,
+    prompt: `${row.prompt}\n\nPlan:\n${artifacts.plan}${
+      flowText ? `\n\nBuild the app so it follows this user-edited flow:\n${flowText}` : ""
+    }`,
     framework: row.framework as FrameworkId,
     seed: id,
     knowledge,
@@ -39,9 +56,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     .prepare(
       `UPDATE projects SET
         phase = 'ready',
+        name = ?,
+        description = ?,
         answers_json = ?,
         plan_json = ?,
         skill_md = ?,
+        workflow_json = ?,
         agents_json = ?,
         edges_json = ?,
         files_json = ?,
@@ -52,9 +72,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
        WHERE id = ? AND user_id = ?`,
     )
     .run(
+      row.name === "Untitled" || row.name === "Blank Canvas" ? generated.name : row.name,
+      row.name === "Untitled" || row.name === "Blank Canvas" ? generated.description : row.description,
       JSON.stringify(answers),
       artifacts.plan,
       artifacts.skill,
+      JSON.stringify(workflow?.nodes?.length ? workflow : { nodes: [], edges: [] }),
       JSON.stringify(generated.agents),
       JSON.stringify(generated.edges),
       JSON.stringify([

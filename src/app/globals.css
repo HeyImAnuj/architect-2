@@ -166,6 +166,15 @@ body {
   color: var(--muted);
 }
 
+.composer-field {
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.composer-field::-webkit-scrollbar {
+  display: none;
+}
+
 .tab-scroller {
   scrollbar-width: none;
 }
@@ -184,6 +193,7 @@ body {
   font-weight: 500;
   color: #3c4350;
   text-align: left;
+  transition: background 220ms ease, color 220ms ease;
 }
 
 .nav-row:hover {
@@ -319,3 +329,73 @@ body {
     animation-delay: 0s !important;
   }
 }
+
+html[data-theme="night"] {
+  color-scheme: dark;
+  --ink: #101218;
+  --ink-2: #1a1e27;
+  --panel: #1a1e27;
+  --panel-2: #262c38;
+  --line: #343b4a;
+  --line-soft: #2a3140;
+  --text: #eef1f6;
+  --muted: #a8b1c0;
+  --paper: #f4f6fb;
+  --grid: rgba(165, 180, 252, 0.08);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="night"] body,
+html[data-theme="night"] .blueprint-bg {
+  background: var(--ink);
+  color: var(--text);
+}
+
+html[data-theme="night"] .bg-white,
+html[data-theme="night"] .bg-ink-2,
+html[data-theme="night"] .bg-\[\#f4f7ff\] {
+  background-color: var(--panel);
+}
+
+html[data-theme="night"] .bg-\[\#f7f8f9\],
+html[data-theme="night"] .bg-\[\#eef0f3\],
+html[data-theme="night"] .bg-\[\#f3f4f6\],
+html[data-theme="night"] .hover\:bg-\[\#f3f4f6\]:hover,
+html[data-theme="night"] .hover\:bg-white\/70:hover {
+  background-color: #141820;
+}
+
+html[data-theme="night"] .border-\[\#eceef2\],
+html[data-theme="night"] .border-\[\#e6e8ee\],
+html[data-theme="night"] .border-\[\#e7e9ee\] {
+  border-color: var(--line);
+}
+
+html[data-theme="night"] .text-black,
+html[data-theme="night"] .text-paper,
+html[data-theme="night"] .text-\[\#3c4350\] {
+  color: var(--paper);
+}
+
+html[data-theme="night"] .text-\[\#5b6472\],
+html[data-theme="night"] .text-\[\#4b5563\],
+html[data-theme="night"] .text-\[\#9aa3af\] {
+  color: var(--muted);
+}
+
+html[data-theme="night"] .nav-row {
+  color: #d5dbe6;
+}
+
+html[data-theme="night"] .nav-row:hover,
+html[data-theme="night"] .nav-row-active {
+  background: #262c38;
+  color: var(--paper);
+}
+
+html[data-theme="night"] .chip:not(.chip-mint) {
+  background: var(--panel-2);
+  border-color: var(--line);
+  color: var(--muted);
+}
+

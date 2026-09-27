@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Rocket, X, ExternalLink, Check } from "lucide-react";
+import { ChoiceMenu } from "@/components/studio/ChoiceMenu";
 
 export function DeployModal({
   open,
@@ -56,15 +57,16 @@ export function DeployModal({
               Publish a real hosted preview at an Architect URL others can open.
             </p>
             <label className="text-sm text-muted">Environment</label>
-            <select
-              className="input"
+            <ChoiceMenu
+              label="Environment"
               value={env}
-              onChange={(e) => setEnv(e.target.value)}
-            >
-              <option value="preview">Preview</option>
-              <option value="staging">Staging</option>
-              <option value="production">Production</option>
-            </select>
+              options={[
+                { value: "preview", label: "Preview" },
+                { value: "staging", label: "Staging" },
+                { value: "production", label: "Production" },
+              ]}
+              onChange={setEnv}
+            />
             <button className="btn btn-primary" onClick={() => setStep("region")}>
               Continue
             </button>

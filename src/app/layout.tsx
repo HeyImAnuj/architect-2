@@ -28,6 +28,12 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-dvh flex-col antialiased">
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('architect-theme')!=='bright')document.documentElement.dataset.theme='night';}catch(e){document.documentElement.dataset.theme='night';}",
+          }}
+        />
         <div className="flex flex-1 flex-col">
           <Providers>{children}</Providers>
         </div>

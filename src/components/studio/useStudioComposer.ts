@@ -155,7 +155,9 @@ export function useStudioComposer(onOpen: (screen: StudioScreen) => void) {
         zipBase64: tab === "zip" ? zipBase64 : undefined,
       });
       saveCredits(credits - 12);
-      router.push(`/workspace/${id}`, { transitionTypes: ["nav-forward"] });
+      router.push(source === "blank" ? `/workspace/${id}?tab=flow` : `/workspace/${id}`, {
+        transitionTypes: ["nav-forward"],
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create project");
       setCreating(false);

@@ -104,6 +104,8 @@ function HomeScreen() {
                     visibility: project.visibility === "shared" ? "private" : "shared",
                   })
                 }
+                onRename={(project, name) => void composer.updateProject(project.id, { name })}
+                onDelete={(project) => useAppStore.getState().deleteProject(project.id)}
                 designId={composer.designId}
                 setDesignId={composer.setDesignId}
                 connectors={composer.connectors}

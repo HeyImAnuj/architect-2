@@ -2,6 +2,7 @@ import type { DbProject } from "./db";
 import type {
   AgentEdge,
   AgentNode,
+  AppWorkflow,
   ChatMessage,
   CodeFile,
   KnowledgeFile,
@@ -33,6 +34,10 @@ export function toClientProject(row: DbProject): Project {
     deploySlug: row.deploy_slug ?? undefined,
     agents: parseJson<AgentNode[]>(row.agents_json, []),
     edges: parseJson<AgentEdge[]>(row.edges_json, []),
+    workflow: parseJson<AppWorkflow>(row.workflow_json || "{\"nodes\":[],\"edges\":[]}", {
+      nodes: [],
+      edges: [],
+    }),
     messages: parseJson<ChatMessage[]>(row.messages_json, []),
     files: parseJson<CodeFile[]>(row.files_json, []),
     knowledgeFiles: parseJson<KnowledgeFile[]>(row.knowledge_json, []),

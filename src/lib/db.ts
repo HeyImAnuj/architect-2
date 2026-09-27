@@ -104,6 +104,7 @@ async function ensureSchema() {
     "ALTER TABLE projects ADD COLUMN IF NOT EXISTS skill_md TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE projects ADD COLUMN IF NOT EXISTS env_json TEXT NOT NULL DEFAULT '{}'",
     "ALTER TABLE projects ADD COLUMN IF NOT EXISTS connectors_json TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE projects ADD COLUMN IF NOT EXISTS workflow_json TEXT NOT NULL DEFAULT '{\"nodes\":[],\"edges\":[]}'",
     "ALTER TABLE projects ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private'",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS github_token TEXT",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS github_login TEXT",
@@ -189,6 +190,7 @@ export type DbProject = {
   env_json: string;
   connectors_json: string;
   visibility: string;
+  workflow_json?: string;
   created_at: number;
   updated_at: number;
 };

@@ -3,7 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { db, newId, type DbProject } from "@/lib/db";
 import { error, json } from "@/lib/api";
 import { toClientProject } from "@/lib/project-mapper";
-import { buildPreviewHtml, buildFiles } from "@/lib/generator";
+import { buildFiles } from "@/lib/generator";
 import { buildApp } from "@/lib/llm";
 import { fetchRepoFiles } from "@/lib/github";
 import { filesFromZip, previewFromFiles } from "@/lib/import-files";
@@ -31,20 +31,13 @@ export async function POST(req: NextRequest) {
   const id = newId("proj");
 
   if (source === "blank") {
-    const name = body.name?.trim() || "Blank Canvas";
-    const previewHtml = buildPreviewHtml({
-      name,
-      prompt: "Blank agentic canvas — describe what you want in chat.",
-      agents: [],
-      knowledge: [],
-    });
-    const files = buildFiles(name, "Blank canvas", framework, []);
+    const name = body.name?.trim() || "Untitled";
+    const files = buildFiles(name, "Untitled flow", framework, []);
     const messages = [
       {
         id: newId("msg"),
         role: "architect",
-        content:
-          "Blank canvas ready. Describe an outcome in Soft mode, or edit Files in Pro mode.",
+        content: "This canvas is empty. Add steps on the flow, connect them, then build.",
         timestamp: now,
       },
     ];
@@ -59,13 +52,13 @@ export async function POST(req: NextRequest) {
       id,
       user.id,
       name,
-      "Blank agentic canvas",
+      "Untitled flow",
       "",
       framework,
       mode,
       JSON.stringify(messages),
       JSON.stringify(files),
-      previewHtml,
+      "",
       now,
       now,
     );
@@ -153,7 +146,9 @@ export async function POST(req: NextRequest) {
 
   if (!prompt) return error("Prompt is required");
 
-  const name = prompt
+  const name =
+    String(body.name || "").trim().slice(0, 80) ||
+    prompt
     .replace(/^(build|create|make)\s+/i, "")
     .split(/\s+/)
     .slice(0, 5)

@@ -96,10 +96,10 @@ export const clientApi = {
       method: "POST",
       body: JSON.stringify({ repo }),
     }),
-  build: (id: string, answers: Record<string, string | string[]>) =>
+  build: (id: string, answers: Record<string, string | string[]>, workflow?: import("@/lib/types").AppWorkflow) =>
     api<{ project: Project }>(`/api/projects/${id}/generate`, {
       method: "POST",
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, workflow }),
     }),
   records: (id: string) =>
     api<{ tables: Record<string, { id: string; createdAt: number; data: Record<string, unknown> }[]> }>(

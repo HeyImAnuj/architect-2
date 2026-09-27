@@ -27,6 +27,8 @@ interface AppState {
   panelRequest: { id: string; nonce: number } | null;
   workspaceAction: { type: "github" | "deploy"; nonce: number } | null;
   buildingProjectId: string | null;
+  focusProjectId: string | null;
+  setFocusProject: (id: string | null) => void;
   error: string | null;
   setHydrated: (v: boolean) => void;
   bootstrap: () => Promise<void>;
@@ -71,10 +73,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   panelRequest: null,
   workspaceAction: null,
   buildingProjectId: null,
+  focusProjectId: null,
   error: null,
 
   setHydrated: (v) => set({ hydrated: v }),
   setError: (error) => set({ error }),
+  setFocusProject: (id) => set({ focusProjectId: id }),
   setPanel: (panel) => set({ activePanel: panel }),
   setComposeMode: (mode) =>
     set((state) => ({
@@ -147,7 +151,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   createProject: async (input) => {
     const { project } = await clientApi.createProject(input);
-    set((s) => ({ projects: [project, ...s.projects.filter((p) => p.id !== project.id)] }));
+    set((s) => ({
+      focusProjectId: project.id,
+      projects: [project, ...s.projects.filter((p) => p.id !== project.id)],
+    }));
     if (
       project.phase !== "planning" &&
       (input.source === "prompt" ||
@@ -174,7 +181,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   deleteProject: async (id) => {
     await clientApi.deleteProject(id);
-    set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }));
+    set((s) => ({
+      projects: s.projects.filter((p) => p.id !== id),
+      focusProjectId: s.focusProjectId === id ? null : s.focusProjectId,
+    }));
   },
 
   getProject: (id) => get().projects.find((p) => p.id === id),

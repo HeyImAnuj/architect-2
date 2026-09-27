@@ -26,7 +26,9 @@ export default function AuthPage() {
   const [forgot, setForgot] = useState(false);
 
   useEffect(() => {
-    if (hydrated && user) router.replace("/home", { transitionTypes: ["nav-forward"] });
+    if (hydrated && user && user.provider !== "guest") {
+      router.replace("/home", { transitionTypes: ["nav-forward"] });
+    }
   }, [hydrated, user, router]);
 
   async function handleEmail(event: React.FormEvent) {
@@ -40,7 +42,12 @@ export default function AuthPage() {
         return;
       }
       if (mode === "register") {
-        await register(name || email.split("@")[0], email, password);
+        const accountName = name.trim();
+        if (!accountName) {
+          setError("Add your name so the studio knows who you are.");
+          return;
+        }
+        await register(accountName, email, password);
       } else {
         await login(email, password);
       }
@@ -100,7 +107,13 @@ export default function AuthPage() {
             {mode === "register" && !forgot && (
               <label className="grid gap-1 text-sm font-medium text-black">
                 Name
-                <input className="input bg-[#f4f7ff]" value={name} onChange={(e) => setName(e.target.value)} />
+                <input
+                  className="input bg-[#f4f7ff]"
+                  required
+                  minLength={1}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </label>
             )}
             <label className="grid gap-1 text-sm font-medium text-black">
@@ -152,7 +165,7 @@ export default function AuthPage() {
                 Open your reset link
               </a>
             )}
-            <button className="btn btn-primary h-12 w-full" disabled={busy}>
+            <button className="btn btn-primary h-12 w-full" type="submit" disabled={busy}>
               {busy ? "Please wait…" : forgot ? "Create reset link" : mode === "login" ? "Log in" : "Create account"}
               <ArrowRight className="h-4 w-4" />
             </button>

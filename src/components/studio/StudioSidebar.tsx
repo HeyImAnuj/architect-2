@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
   Boxes,
+  ChevronDown,
   ChevronRight,
   Download,
   FolderGit2,
@@ -13,7 +14,10 @@ import {
   Layers3,
   Library,
   LogOut,
+  Plus,
   Rocket,
+  Sun,
+  Moon,
   Settings,
   Sparkles,
   X,
@@ -26,6 +30,7 @@ import {
   type DeskTab,
   type StudioScreen,
 } from "@/lib/studio-catalog";
+import { applyTheme, readTheme, type ColorTheme } from "@/lib/theme";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -74,10 +79,10 @@ export function StudioSidebar({
 
   function openDesk(tab: DeskTab | "deploy" | "github") {
     onClose?.();
-    const id = workspaceId || projects[0]?.id;
+    const id = workspaceId || useAppStore.getState().focusProjectId || (projects.length === 1 ? projects[0]?.id : "");
     if (!id) {
-      requestPanel("prompt");
-      router.push("/home?view=prompt");
+      requestPanel("mine");
+      router.push("/home?view=mine");
       return;
     }
     if (tab === "deploy" || tab === "github") {
@@ -97,9 +102,9 @@ export function StudioSidebar({
 
   return (
     <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-[#eceef2] bg-white">
-      <div className="flex items-center gap-2 px-3 pb-3 pt-3">
+      <div className="flex items-center justify-center gap-2 px-3 pb-3 pt-3">
         <button
-          className="min-w-0 flex-1 truncate rounded-full border border-[#e6e8ee] px-3 py-1.5 text-left text-[13px] text-paper"
+          className="flex min-h-8 w-full items-center justify-center truncate rounded-full border border-[#e6e8ee] px-4 py-1.5 text-center text-[13px] font-medium text-paper"
           onClick={() => go("account")}
         >
           {user.name}
@@ -136,9 +141,9 @@ export function StudioSidebar({
           <SubItem
             label="Export"
             onClick={() => {
-              const id = workspaceId || projects[0]?.id;
+              const id = workspaceId || useAppStore.getState().focusProjectId || (projects.length === 1 ? projects[0]?.id : "");
               if (!id) {
-                router.push("/home?view=prompt");
+                router.push("/home?view=mine");
                 return;
               }
               window.location.assign(`/api/projects/${id}/export`);
@@ -231,11 +236,25 @@ function StudioTopBar({ onMenu }: { onMenu: () => void }) {
   const signOut = useAppStore((s) => s.signOut);
   const requestPanel = useAppStore((s) => s.requestPanel);
   const requestWorkspaceAction = useAppStore((s) => s.requestWorkspaceAction);
+  const focusProjectId = useAppStore((s) => s.focusProjectId);
+  const setFocusProject = useAppStore((s) => s.setFocusProject);
   const workspaceId = pathname.match(/^\/workspace\/([^/]+)/)?.[1];
-  const projectId = workspaceId || projects[0]?.id;
+  const projectId = workspaceId || focusProjectId || (projects.length === 1 ? projects[0]?.id : "");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const [credits, setCredits] = useState(200);
+  const [theme, setTheme] = useState<ColorTheme>("night");
   const settingsRef = useRef<HTMLDivElement>(null);
+  const projectsRef = useRef<HTMLDivElement>(null);
+  const currentProject = projects.find((item) => item.id === projectId);
+
+  useEffect(() => {
+    const read = () => setTheme(readTheme());
+    read();
+    window.addEventListener("architect-theme", read);
+    return () => window.removeEventListener("architect-theme", read);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -250,21 +269,33 @@ function StudioTopBar({ onMenu }: { onMenu: () => void }) {
   }, [user]);
 
   useEffect(() => {
-    if (!settingsOpen) return;
+    if (!settingsOpen && !projectsOpen) return;
     function close(event: MouseEvent) {
-      if (!settingsRef.current?.contains(event.target as Node)) setSettingsOpen(false);
+      const target = event.target as Node;
+      if (settingsOpen && !settingsRef.current?.contains(target)) setSettingsOpen(false);
+      if (projectsOpen && !projectsRef.current?.contains(target)) setProjectsOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSettingsOpen(false);
+        setProjectsOpen(false);
+      }
     }
     window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
-  }, [settingsOpen]);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [settingsOpen, projectsOpen]);
 
   function openProjectAction(type: "github" | "deploy") {
     if (!projectId) {
-      router.push("/home?view=prompt");
+      router.push("/home?view=mine");
       return;
     }
     requestWorkspaceAction(type);
-    if (!workspaceId) {
+    if (!workspaceId || workspaceId !== projectId) {
       router.push(`/workspace/${projectId}?action=${type}`, { transitionTypes: ["nav-forward"] });
     }
   }
@@ -286,7 +317,21 @@ function StudioTopBar({ onMenu }: { onMenu: () => void }) {
     window.dispatchEvent(new Event("architect-credits"));
   }
 
+  function projectLabel(name: string, phase: string) {
+    return phase === "intent" && name === "Blank Canvas" ? "Untitled" : name;
+  }
+
+  function askNewProject() {
+    setProjectsOpen(false);
+    if (workspaceId) {
+      setLeaveOpen(true);
+      return;
+    }
+    router.push("/home?view=prompt", { transitionTypes: ["nav-forward"] });
+  }
+
   return (
+    <>
     <header className="relative z-20 flex h-9 shrink-0 items-center border-b border-[#eceef2] bg-white px-2">
       <div className="flex min-w-0 items-center gap-2 pl-1.5">
         <button
@@ -301,6 +346,69 @@ function StudioTopBar({ onMenu }: { onMenu: () => void }) {
         <span className="text-[13px] font-semibold tracking-tight text-paper">Architect 2.0</span>
       </div>
       <div className="ml-auto flex items-center gap-0.5">
+        <div className="relative" ref={projectsRef}>
+          <button
+            className={`nav-row min-w-[9.5rem] max-w-[220px] ${projectsOpen ? "nav-row-active" : ""}`}
+            aria-label="Current project"
+            aria-expanded={projectsOpen}
+            onClick={() => {
+              setSettingsOpen(false);
+              setProjectsOpen((open) => !open);
+            }}
+          >
+            <span className="min-w-0 truncate">
+              {currentProject
+                ? projectLabel(currentProject.name, currentProject.phase)
+                : projects.length
+                  ? "Choose a project"
+                  : "No project yet"}
+            </span>
+            <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out ${projectsOpen ? "rotate-180" : ""}`} />
+          </button>
+          <AnimatePresence>
+            {projectsOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.28, ease: easeOut }}
+                className="absolute left-0 right-0 top-full z-50 mt-1 min-w-[9.5rem] overflow-hidden rounded-xl border border-[#eceef2] bg-white shadow-lg"
+              >
+                {projects.length > 0 && (
+                  <div className="max-h-36 overflow-y-auto p-1">
+                    {projects.map((item) => (
+                      <button
+                        key={item.id}
+                        className={`flex h-9 w-full items-center truncate rounded-lg px-2.5 text-left text-[13px] text-paper hover:bg-panel-2 ${
+                          item.id === projectId ? "bg-panel-2" : ""
+                        }`}
+                        title={projectLabel(item.name, item.phase)}
+                        onClick={() => {
+                          setFocusProject(item.id);
+                          setProjectsOpen(false);
+                          router.push(`/workspace/${item.id}`);
+                        }}
+                      >
+                        {projectLabel(item.name, item.phase)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {projects.length === 0 && (
+                  <p className="px-3 py-2 text-[12px] leading-5 text-muted">No project yet</p>
+                )}
+                <button
+                  type="button"
+                  className="flex h-9 w-full items-center gap-1 border-t border-[#eceef2] px-2.5 text-left text-[13px] font-medium text-paper hover:bg-panel-2"
+                  onClick={askNewProject}
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  Create new
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         {projectId ? (
           <a className="nav-row" href={`/api/projects/${projectId}/export`}>
             <Download className="h-3.5 w-3.5" />
@@ -324,13 +432,43 @@ function StudioTopBar({ onMenu }: { onMenu: () => void }) {
           <button
             className={`nav-row ${settingsOpen ? "nav-row-active" : ""}`}
             aria-expanded={settingsOpen}
-            onClick={() => setSettingsOpen((open) => !open)}
+            onClick={() => {
+              setProjectsOpen(false);
+              setSettingsOpen((open) => !open);
+            }}
           >
             <Settings className="h-3.5 w-3.5" />
             Settings
           </button>
+          <AnimatePresence>
           {settingsOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-xl border border-[#eceef2] bg-white p-1.5 shadow-lg">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28, ease: easeOut }}
+              className="absolute right-0 top-full z-50 mt-1 max-h-80 w-56 overflow-y-auto rounded-xl border border-[#eceef2] bg-white p-1.5 shadow-lg"
+            >
+              <div className="grid grid-cols-2 gap-1 p-0.5">
+                <button
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-medium ${
+                    theme === "bright" ? "bg-panel-2 text-paper" : "text-muted hover:bg-panel-2"
+                  }`}
+                  onClick={() => applyTheme("bright")}
+                >
+                  <Sun className="h-3.5 w-3.5" />
+                  Bright
+                </button>
+                <button
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-medium ${
+                    theme === "night" ? "bg-panel-2 text-paper" : "text-muted hover:bg-panel-2"
+                  }`}
+                  onClick={() => applyTheme("night")}
+                >
+                  <Moon className="h-3.5 w-3.5" />
+                  Night
+                </button>
+              </div>
               <button
                 className="w-full rounded-full bg-[#e7f6ee] px-3 py-1.5 text-left text-[12px] font-medium text-[#157a45]"
                 onClick={() => saveCredits(credits + 10)}
@@ -355,11 +493,42 @@ function StudioTopBar({ onMenu }: { onMenu: () => void }) {
                 <LogOut className="h-3.5 w-3.5" />
                 Sign out
               </button>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
       </div>
     </header>
+    {leaveOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="panel w-full max-w-sm p-4">
+          <h3 className="text-sm font-semibold text-paper">Save this project?</h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            {currentProject ? projectLabel(currentProject.name, currentProject.phase) : "This project"} stays in your list. The prompt opens after you save, so you can name and describe the next app.
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              className="h-8 rounded-md px-3 text-[13px] text-muted hover:bg-panel-2"
+              onClick={() => setLeaveOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="h-8 rounded-md bg-mint px-3 text-[13px] font-medium text-white"
+              onClick={() => {
+                setLeaveOpen(false);
+                router.push("/home?view=prompt", { transitionTypes: ["nav-forward"] });
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -389,7 +558,7 @@ function MenuGroup({
       <button className="nav-row w-full" aria-expanded={open} onClick={onToggle}>
         <Icon className="h-3.5 w-3.5 shrink-0 text-[#8b93a1]" />
         <span className="min-w-0 flex-1 truncate">{label}</span>
-        <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-[#8b93a1] transition-transform duration-300 ${open ? "rotate-90" : ""}`} />
+        <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-[#8b93a1] transition-transform duration-500 ease-out ${open ? "rotate-90" : ""}`} />
       </button>
       <Collapse open={open}>
         <div className="grid py-0.5 pl-6">{children}</div>
@@ -406,28 +575,38 @@ function SubItem({ label, active, onClick }: { label: string; active?: boolean; 
   );
 }
 
+const MENU_LIMIT = 320;
+
 function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
   const innerRef = useRef<HTMLDivElement>(null);
-  const skip = useRef(true);
   const [height, setHeight] = useState(0);
+  const [canScroll, setCanScroll] = useState(false);
 
   useEffect(() => {
-    const next = open ? (innerRef.current?.scrollHeight ?? 0) : 0;
-    setHeight(next);
-    const frame = requestAnimationFrame(() => {
-      skip.current = false;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [open, children]);
+    const node = innerRef.current;
+    if (!node) return;
+    const measure = () => {
+      const full = node.scrollHeight;
+      setHeight(open ? Math.min(full, MENU_LIMIT) : 0);
+      setCanScroll(open && full > MENU_LIMIT);
+    };
+    measure();
+    if (!open) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [open]);
 
   return (
     <motion.div
       initial={false}
       animate={{ height, opacity: open ? 1 : 0 }}
-      transition={{ duration: skip.current ? 0 : 0.42, ease: easeOut }}
+      transition={{ duration: 0.45, ease: easeOut }}
       className="overflow-hidden"
     >
-      <div ref={innerRef}>{children}</div>
+      <div ref={innerRef} className={canScroll ? "max-h-80 overflow-y-auto" : undefined}>
+        {children}
+      </div>
     </motion.div>
   );
 }

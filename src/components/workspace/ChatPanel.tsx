@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { Minus, Send } from "lucide-react";
 import type { ChatMessage } from "@/lib/types";
 
 export function ChatPanel({
   messages,
   onSend,
   mode,
+  onClose,
 }: {
   messages: ChatMessage[];
   onSend: (content: string) => void;
   mode: "soft" | "pro";
+  onClose?: () => void;
 }) {
   const [value, setValue] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -28,8 +30,13 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-line px-4 py-2">
+      <div className="flex items-center justify-between border-b border-line px-4 py-2">
         <div className="text-[13px] font-medium text-paper">Architect chat</div>
+        {onClose && (
+          <button className="rounded-md p-1 text-muted hover:bg-panel-2 hover:text-paper" onClick={onClose} aria-label="Hide chat">
+            <Minus className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <div className="scrollbar-thin flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {messages.map((m) => (

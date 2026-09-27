@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, GitBranch, Check } from "lucide-react";
+import { ChoiceMenu } from "@/components/studio/ChoiceMenu";
 
 type Repo = { fullName: string; private: boolean };
 
@@ -134,13 +135,12 @@ export function GitHubModal({
             {repos.length > 0 && onImport && (
               <div className="grid gap-2">
                 <label className="text-sm text-muted">Import one of your repositories into this project</label>
-                <select className="input" value={selected} onChange={(event) => setSelected(event.target.value)}>
-                  {repos.map((item) => (
-                    <option key={item.fullName} value={item.fullName}>
-                      {item.fullName}
-                    </option>
-                  ))}
-                </select>
+                <ChoiceMenu
+                  label="Repository"
+                  value={selected}
+                  options={repos.map((item) => ({ value: item.fullName, label: item.fullName }))}
+                  onChange={setSelected}
+                />
                 <button
                   className="btn btn-soft"
                   disabled={busy || !selected}

@@ -14,6 +14,8 @@ import { PlanFlow } from "@/components/workspace/PlanFlow";
 import { DataPanel } from "@/components/workspace/DataPanel";
 import { GitHubModal } from "@/components/workspace/GitHubModal";
 import { DeployModal } from "@/components/workspace/DeployModal";
+import { WorkflowCanvas, seedWorkflow } from "@/components/workspace/WorkflowCanvas";
+import { MessageSquare } from "lucide-react";
 import { clientApi } from "@/lib/client-api";
 import { isCenterTab, isStudioScreen, type CenterTab } from "@/lib/studio-catalog";
 import { CenterTabs } from "@/components/studio/CenterTabs";
@@ -49,9 +51,13 @@ function WorkspaceScreen() {
   const updateProject = useAppStore((s) => s.updateProject);
   const addKnowledge = useAppStore((s) => s.addKnowledge);
   const updateFile = useAppStore((s) => s.updateFile);
+  const setFocusProject = useAppStore((s) => s.setFocusProject);
 
   const [githubOpen, setGithubOpen] = useState(false);
   const [deployOpen, setDeployOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
+  const [flowBuilding, setFlowBuilding] = useState(false);
+  const [planAnswers, setPlanAnswers] = useState<Record<string, string | string[]>>({});
   const [loadingMissing, setLoadingMissing] = useState(false);
   const [openTabs, setOpenTabs] = useState<CenterTab[]>([]);
   const [activeTab, setActiveTab] = useState<CenterTab | null>(null);
@@ -64,6 +70,20 @@ function WorkspaceScreen() {
   useEffect(() => {
     if (hydrated && !user) router.replace("/auth", { transitionTypes: ["nav-forward"] });
   }, [hydrated, user, router]);
+
+  useEffect(() => {
+    if (project) setFocusProject(project.id);
+  }, [project, setFocusProject]);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("architect-chat-open");
+    if (saved === "0") setChatOpen(false);
+  }, []);
+
+  function setChat(open: boolean) {
+    setChatOpen(open);
+    window.localStorage.setItem("architect-chat-open", open ? "1" : "0");
+  }
 
   useEffect(() => {
     if (!hydrated || !user || project || !params.id) return;
@@ -104,7 +124,8 @@ function WorkspaceScreen() {
     if (action === "deploy") setDeployOpen(true);
     if (action === "github") setGithubOpen(true);
     if (switchingProject) {
-      const progress: CenterTab = project.phase === "planning" ? "plan" : "preview";
+      const progress: CenterTab =
+        project.phase === "planning" ? "plan" : project.phase === "intent" ? "flow" : "preview";
       const tabs: CenterTab[] = [progress];
       if (isCenterTab(requested) && requested !== progress) tabs.push(requested);
       setOpenTabs(tabs);
@@ -184,6 +205,11 @@ function WorkspaceScreen() {
                     visibility: item.visibility === "shared" ? "private" : "shared",
                   })
                 }
+                onRename={(item, name) => void composer.updateProject(item.id, { name })}
+                onDelete={async (item) => {
+                  await useAppStore.getState().deleteProject(item.id);
+                  if (item.id === params.id) router.push("/home", { transitionTypes: ["nav-back"] });
+                }}
                 designId={composer.designId}
                 setDesignId={composer.setDesignId}
                 connectors={composer.connectors}
@@ -219,7 +245,13 @@ function WorkspaceScreen() {
               <PreviewPanel html={project.previewHtml} phase={project.phase} />
             )}
             {activeTab === "plan" && project.phase === "planning" && (
-              <PlanFlow projectId={project.id} prompt={project.prompt} onBuilt={() => openTab("preview")} />
+              <PlanFlow
+                prompt={project.prompt}
+                onContinue={(answers) => {
+                  setPlanAnswers(answers);
+                  openTab("flow");
+                }}
+              />
             )}
             {activeTab === "plan" && project.phase !== "planning" && (
               <div className="h-full overflow-auto p-6">
@@ -235,12 +267,48 @@ function WorkspaceScreen() {
                 )}
               </div>
             )}
+            {activeTab === "flow" && (
+              <WorkflowCanvas
+                workflow={
+                  project.workflow?.nodes?.length
+                    ? project.workflow
+                    : project.phase === "intent"
+                      ? { nodes: [], edges: [] }
+                      : seedWorkflow(project.prompt, project.mode)
+                }
+                building={flowBuilding}
+                onChange={(workflow) => void updateProject(project.id, { workflow })}
+                onBuild={async () => {
+                  const workflow = project.workflow?.nodes?.length
+                    ? project.workflow
+                    : project.phase === "intent"
+                      ? { nodes: [], edges: [] }
+                      : seedWorkflow(project.prompt, project.mode);
+                  if (!workflow.nodes.length) return;
+                  setFlowBuilding(true);
+                  try {
+                    const { project: next } = await clientApi.build(
+                      project.id,
+                      Object.keys(planAnswers).length ? planAnswers : project.planAnswers || {},
+                      workflow,
+                    );
+                    useAppStore.setState((state) => ({
+                      projects: state.projects.map((item) => (item.id === next.id ? next : item)),
+                    }));
+                    openTab("preview");
+                  } finally {
+                    setFlowBuilding(false);
+                  }
+                }}
+              />
+            )}
             {activeTab === "agents" && (
               <AgentGraph
                 agents={project.agents}
                 edges={project.edges}
                 building={building}
                 onChange={(agents) => void updateProject(project.id, { agents })}
+                onEdges={(edges) => void updateProject(project.id, { edges })}
               />
             )}
             {activeTab === "files" && (
@@ -260,13 +328,25 @@ function WorkspaceScreen() {
           </div>
         </section>
 
-        <aside className="flex w-[360px] shrink-0 flex-col border-l border-[#eceef2] bg-white max-lg:w-[300px]">
-          <ChatPanel
-            messages={project.messages}
-            mode={project.mode}
-            onSend={(content) => void sendMessage(project.id, content)}
-          />
-        </aside>
+        {chatOpen ? (
+          <aside className="flex w-[360px] shrink-0 flex-col border-l border-[#eceef2] bg-white max-lg:w-[300px]">
+            <ChatPanel
+              messages={project.messages}
+              mode={project.mode}
+              onSend={(content) => void sendMessage(project.id, content)}
+              onClose={() => setChat(false)}
+            />
+          </aside>
+        ) : (
+          <button
+            className="flex w-11 shrink-0 flex-col items-center justify-center gap-2 border-l border-[#eceef2] bg-white text-[11px] text-muted"
+            onClick={() => setChat(true)}
+            aria-label="Open chat"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Chat
+          </button>
+        )}
       </div>
 
       <GitHubModal

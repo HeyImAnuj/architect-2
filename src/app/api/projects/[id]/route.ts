@@ -73,6 +73,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       patch.connectors !== undefined
         ? JSON.stringify(patch.connectors)
         : row.connectors_json,
+    workflow_json:
+      patch.workflow !== undefined ? JSON.stringify(patch.workflow) : row.workflow_json || "{\"nodes\":[],\"edges\":[]}",
     updated_at: Date.now(),
   };
 
@@ -102,7 +104,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       name=?, description=?, prompt=?, framework=?, mode=?, phase=?,
       github_connected=?, github_repo=?, deployed=?, deploy_url=?, deploy_slug=?,
       agents_json=?, edges_json=?, messages_json=?, files_json=?, knowledge_json=?,
-      preview_html=?, traces_json=?, visibility=?, connectors_json=?, updated_at=?
+      preview_html=?, traces_json=?, visibility=?, connectors_json=?, workflow_json=?, updated_at=?
      WHERE id=? AND user_id=?`,
   ).run(
     next.name,
@@ -125,6 +127,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     next.traces_json,
     next.visibility,
     next.connectors_json,
+    next.workflow_json,
     next.updated_at,
     id,
     user.id,
@@ -140,6 +143,8 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const row = await getOwned(id, user.id);
   if (!row) return error("Not found", 404);
+  await db.prepare("DELETE FROM app_records WHERE project_id = ?").run(id);
+  await db.prepare("DELETE FROM published_apps WHERE project_id = ? AND user_id = ?").run(id, user.id);
   await db.prepare("DELETE FROM projects WHERE id = ? AND user_id = ?").run(id, user.id);
   return json({ ok: true });
 }

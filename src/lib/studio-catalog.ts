@@ -1,6 +1,7 @@
 export const DESK_TABS = [
   { id: "preview", label: "Preview" },
   { id: "plan", label: "Plan" },
+  { id: "flow", label: "Flow" },
   { id: "agents", label: "Agents" },
   { id: "knowledge", label: "Knowledge" },
   { id: "data", label: "Data" },

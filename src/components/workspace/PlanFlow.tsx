@@ -2,26 +2,19 @@
 
 import { useState } from "react";
 import { PLAN_QUESTIONS } from "@/lib/plan";
-import { clientApi } from "@/lib/client-api";
-import { useAppStore } from "@/lib/store";
 
 export function PlanFlow({
-  projectId,
   prompt,
-  onBuilt,
+  onContinue,
 }: {
-  projectId: string;
   prompt: string;
-  onBuilt: () => void;
+  onContinue: (answers: Record<string, string | string[]>) => void;
 }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [building, setBuilding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [review, setReview] = useState(false);
 
   const question = PLAN_QUESTIONS[step];
-  const selected = answers[question?.id || ""] ;
+  const selected = answers[question?.id || ""];
 
   function choose(optionId: string) {
     if (!question) return;
@@ -45,46 +38,6 @@ export function PlanFlow({
     return typeof value === "string" && value.length > 0;
   }
 
-  async function build() {
-    setBuilding(true);
-    setError(null);
-    try {
-      const { project } = await clientApi.build(projectId, answers);
-      useAppStore.setState((s) => ({
-        projects: s.projects.map((p) => (p.id === projectId ? project : p)),
-      }));
-      onBuilt();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not build");
-    } finally {
-      setBuilding(false);
-    }
-  }
-
-  if (review) {
-    return (
-      <div className="mx-auto flex h-full max-w-2xl flex-col justify-center px-6 py-10">
-        <p className="text-sm font-semibold text-mint">Ready to build</p>
-        <h2 className="display mt-2 text-3xl font-bold text-paper">
-          We have enough to start
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted">
-          Architect will turn “{prompt.slice(0, 140)}” into a plan, a first screen,
-          and a working agent graph. You can change anything afterwards.
-        </p>
-        {error && <p className="mt-3 text-sm text-rose">{error}</p>}
-        <div className="mt-6 flex gap-3">
-          <button className="btn btn-ghost" onClick={() => setReview(false)} disabled={building}>
-            Back
-          </button>
-          <button className="btn btn-primary" onClick={() => void build()} disabled={building}>
-            {building ? "Building…" : "Start building"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (!question) return null;
 
   return (
@@ -92,6 +45,7 @@ export function PlanFlow({
       <p className="text-sm font-semibold text-mint">
         Question {step + 1} of {PLAN_QUESTIONS.length}
       </p>
+      <p className="mt-2 line-clamp-2 text-sm text-muted">{prompt}</p>
       <h2 className="display mt-2 text-3xl font-bold text-paper">{question.title}</h2>
       <p className="mt-2 text-sm text-muted">{question.why}</p>
       <div className="mt-6 grid gap-3">
@@ -126,11 +80,11 @@ export function PlanFlow({
           className="btn btn-primary"
           disabled={!canContinue()}
           onClick={() => {
-            if (step === PLAN_QUESTIONS.length - 1) setReview(true);
+            if (step === PLAN_QUESTIONS.length - 1) onContinue(answers);
             else setStep((s) => s + 1);
           }}
         >
-          Continue
+          {step === PLAN_QUESTIONS.length - 1 ? "Open the flow" : "Continue"}
         </button>
       </div>
     </div>
