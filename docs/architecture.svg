@@ -1,83 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860">
-  <rect width="1280" height="860" fill="#f6f7f9"/>
-  <text x="48" y="52" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="600" fill="#12141a">Architect 2.0</text>
-  <text x="48" y="78" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#5b6472">One project is the source of truth. Soft and Pro are two views of it.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1480" viewBox="0 0 1400 1480">
+  <rect width="1400" height="1480" fill="#f6f7f9"/>
+  <text x="40" y="44" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="650" fill="#12141a">Architect 2.0</text>
+  <text x="40" y="70" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#5b6472">Soft and Pro share one project. A non-technical user can publish the preview. GitHub is optional.</text>
 
-  <rect x="48" y="104" width="560" height="72" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="72" y="134" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">Soft lane</text>
-  <text x="72" y="156" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Prompt, plan, flow, preview, chat</text>
+  <rect x="40" y="90" width="1320" height="118" rx="12" fill="#ffffff" stroke="#d8dde6"/>
+  <text x="60" y="116" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">1  SIGN IN</text>
+  <text x="60" y="140" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">Account, then an httpOnly session</text>
+  <text x="60" y="164" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: Register with a name, log in, or continue as a guest. The server hashes the password and sets a cookie. Later routes reject a missing session.</text>
+  <text x="60" y="186" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: Next.js /api/auth, bcryptjs, jose HS256 JWT, cookie architect_session, Postgres users table (Neon).</text>
 
-  <rect x="672" y="104" width="560" height="72" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="696" y="134" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">Pro lane</text>
-  <text x="696" y="156" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Same project, plus files, framework, GitHub, deploy</text>
+  <rect x="40" y="220" width="1320" height="118" rx="12" fill="#ffffff" stroke="#d8dde6"/>
+  <text x="60" y="246" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">2  PROMPT</text>
+  <text x="60" y="270" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">Describe the job. Pick Soft or Pro.</text>
+  <text x="60" y="294" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: One prompt creates one project. Soft stays on the outcome. Pro adds a framework. A new project spends 12 local credits. Attachments stay as knowledge text.</text>
+  <text x="60" y="316" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: React studio, Zustand, projects row (mode, framework, prompt, connectors_json). Credits live in localStorage, not the database.</text>
 
-  <line x1="328" y1="176" x2="328" y2="198" stroke="#157a45" stroke-width="2"/>
-  <line x1="952" y1="176" x2="952" y2="198" stroke="#157a45" stroke-width="2"/>
-  <line x1="328" y1="198" x2="952" y2="198" stroke="#157a45" stroke-width="2"/>
-  <line x1="640" y1="198" x2="640" y2="214" stroke="#157a45" stroke-width="2"/>
+  <rect x="40" y="350" width="1320" height="118" rx="12" fill="#ffffff" stroke="#d8dde6"/>
+  <text x="60" y="376" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">3  PLAN</text>
+  <text x="60" y="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">Four questions, still no model call</text>
+  <text x="60" y="424" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: Authority, evidence, memory, and audience become a markdown plan and a skill. The build later reads that plan. A blank canvas skips this and opens an empty flow named Untitled.</text>
+  <text x="60" y="446" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: src/lib/plan.ts. Saved as answers_json, plan_json, and skill_md on the project.</text>
 
-  <rect x="48" y="214" width="1184" height="86" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="72" y="242" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#157a45">BROWSER</text>
-  <text x="72" y="268" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">Studio UI</text>
-  <text x="168" y="268" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#5b6472">Next.js App Router. React. The person never sees API keys.</text>
-  <text x="72" y="290" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Prompt, plan, flow canvas, agent canvas, files, knowledge, data, activity, chat</text>
+  <rect x="40" y="480" width="1320" height="118" rx="12" fill="#ffffff" stroke="#d8dde6"/>
+  <text x="60" y="506" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">4  FLOW AND AGENTS</text>
+  <text x="60" y="530" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">The person draws the harness</text>
+  <text x="60" y="554" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: Drag steps, connect the dots, Save or Enter keeps the edit. Agent cards work the same way. This graph is what Build is told to follow. It is not a running LangGraph process.</text>
+  <text x="60" y="576" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: React canvases. workflow_json, agents_json, and edges_json in Postgres.</text>
 
-  <line x1="640" y1="300" x2="640" y2="328" stroke="#157a45" stroke-width="2"/>
+  <rect x="40" y="610" width="1320" height="148" rx="12" fill="#ffffff" stroke="#d8dde6"/>
+  <text x="60" y="636" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">5  BUILD  -  server proxy</text>
+  <text x="60" y="660" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">The browser never calls the model</text>
+  <text x="60" y="684" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: The route checks the cookie and the owner, then adds the flow text to the prompt.</text>
+  <text x="60" y="704" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">complete() asks for JSON: name, agents, files, preview HTML. If that call fails, a local template still builds the app. Untitled is renamed.</text>
+  <text x="60" y="730" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: POST /api/projects/:id/generate. OpenAI gpt-4o-mini, JSON mode. Key stays in server env. Fallback: generateProjectFromPrompt().</text>
 
-  <rect x="48" y="328" width="1184" height="150" rx="12" fill="#e7f6ee" stroke="#157a45"/>
-  <text x="72" y="356" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#157a45">PROXY - VERCEL SERVER</text>
-  <text x="72" y="380" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">Next.js route handlers are the only callers of OpenAI and GitHub</text>
+  <rect x="40" y="770" width="1320" height="128" rx="12" fill="#ffffff" stroke="#d8dde6"/>
+  <text x="60" y="796" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">6  PREVIEW AND CHAT</text>
+  <text x="60" y="820" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">Sandbox, then an optional edit in plain language</text>
+  <text x="60" y="844" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: Preview HTML sits in an iframe that cannot read the studio cookie. Chat goes through the same proxy and rewrites the page.</text>
+  <text x="60" y="870" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: iframe sandbox allow-scripts allow-forms allow-modals. POST /api/projects/:id/chat. preview_html, files_json, traces_json.</text>
 
-  <rect x="72" y="398" width="210" height="58" rx="8" fill="#ffffff" stroke="#b7e4c7"/>
-  <text x="88" y="422" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#12141a">Auth</text>
-  <text x="88" y="442" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#5b6472">JWT cookie, bcrypt</text>
+  <rect x="40" y="910" width="1320" height="168" rx="12" fill="#e7f6ee" stroke="#157a45"/>
+  <text x="60" y="938" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">7  DEPLOY  -  Soft and Pro, no code required</text>
+  <text x="60" y="962" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">Top bar Deploy. Ship the preview as a public link.</text>
+  <text x="60" y="986" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: Choose an environment label and a region label, then Ship now. GitHub is not required.</text>
+  <text x="60" y="1006" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">The server copies preview HTML into published_apps. Anyone can open /a/slug. A second deploy updates that same row.</text>
+  <text x="60" y="1032" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: Deploy modal, POST /api/projects/:id/deploy, page /a/[slug], GET /api/a/[slug]. Same Vercel app. The region label is not a new data center.</text>
 
-  <rect x="298" y="398" width="210" height="58" rx="8" fill="#ffffff" stroke="#b7e4c7"/>
-  <text x="314" y="422" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#12141a">Projects</text>
-  <text x="314" y="442" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#5b6472">Build, chat, files</text>
+  <rect x="40" y="1090" width="1320" height="148" rx="12" fill="#ffffff" stroke="#d8dde6"/>
+  <text x="60" y="1116" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="650" fill="#157a45">8  PRO ONLY, OPTIONAL</text>
+  <text x="60" y="1140" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="650" fill="#12141a">Files and GitHub. Deploy stays the same button.</text>
+  <text x="60" y="1164" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Logic: Pro can open Files, pick a Pro framework, connect GitHub, and push up to 20 files plus preview.html.</text>
+  <text x="60" y="1184" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#12141a">Import reads a repo back into the project. Soft never has to do this in order to publish.</text>
+  <text x="60" y="1210" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Tech: GitHub OAuth (repo, read:user). Token AES-256-GCM from AUTH_SECRET. Git Data API. Export zip via jszip.</text>
 
-  <rect x="524" y="398" width="210" height="58" rx="8" fill="#ffffff" stroke="#b7e4c7"/>
-  <text x="540" y="422" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#12141a">Model adapter</text>
-  <text x="540" y="442" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#5b6472">one complete() call</text>
-
-  <rect x="750" y="398" width="210" height="58" rx="8" fill="#ffffff" stroke="#b7e4c7"/>
-  <text x="766" y="422" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#12141a">GitHub adapter</text>
-  <text x="766" y="442" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#5b6472">OAuth, encrypted token</text>
-
-  <rect x="976" y="398" width="220" height="58" rx="8" fill="#ffffff" stroke="#b7e4c7"/>
-  <text x="992" y="422" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#12141a">Publish</text>
-  <text x="992" y="442" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#5b6472">/a/slug HTML snapshot</text>
-
-  <line x1="200" y1="478" x2="200" y2="512" stroke="#157a45" stroke-width="2"/>
-  <line x1="500" y1="478" x2="500" y2="512" stroke="#157a45" stroke-width="2"/>
-  <line x1="800" y1="478" x2="800" y2="512" stroke="#157a45" stroke-width="2"/>
-  <line x1="1080" y1="478" x2="1080" y2="512" stroke="#157a45" stroke-width="2"/>
-
-  <rect x="48" y="512" width="270" height="110" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="68" y="542" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#157a45">DATA</text>
-  <text x="68" y="568" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">Neon Postgres</text>
-  <text x="68" y="592" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">users, projects, records</text>
-
-  <rect x="342" y="512" width="300" height="110" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="362" y="542" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#157a45">MODEL</text>
-  <text x="362" y="568" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">OpenAI gpt-4o-mini</text>
-  <text x="362" y="592" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">If it fails, a local template builds</text>
-
-  <rect x="666" y="512" width="270" height="110" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="686" y="542" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#157a45">GITHUB</text>
-  <text x="686" y="568" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">GitHub API</text>
-  <text x="686" y="592" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Create repo, commit a tree</text>
-
-  <rect x="960" y="512" width="272" height="110" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="980" y="542" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#157a45">SANDBOX</text>
-  <text x="980" y="568" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#12141a">iframe sandbox</text>
-  <text x="980" y="592" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Preview and published HTML</text>
-
-  <rect x="48" y="650" width="1184" height="92" rx="12" fill="#ffffff" stroke="#d8dde6"/>
-  <text x="72" y="680" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#157a45">AGENT HARNESS - stored on the project</text>
-  <text x="72" y="712" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" fill="#12141a">Prompt, then Plan, then Flow and agent graph, then Build, then Preview, files, chat, traces</text>
-
-  <text x="48" y="782" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Live: architect-2-kohl.vercel.app. The generated page runs in the sandbox. Framework source is exported, not a second runtime.</text>
-  <text x="48" y="808" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Deploy is a Postgres snapshot on the same Vercel app. There is no container per generated app.</text>
+  <text x="40" y="1288" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Live host: https://architect-2-kohl.vercel.app. Database: Neon Postgres, pool max 5. Secrets stay on the server.</text>
+  <text x="40" y="1312" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#5b6472">Scale: one app and one database. More published previews are more rows, not more servers. Framework source is exported. It is not a second runtime.</text>
 </svg>

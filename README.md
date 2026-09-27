@@ -22,7 +22,7 @@ Claude Code, Codex, and Cursor write code inside a repository. Architect keeps t
 2. Stay on Soft. Describe the job in the prompt.
 3. Answer the short plan questions.
 4. Open **Flow**. Move steps, add a step, and drag a dot from one step to another. Click a step to edit it, then **Save**. Cancel or Escape throws the edit away. Enter saves. Shift+Enter adds a line in a description.
-5. Press **Build**. **Preview** shows the app. Hide the chat with the minus when you are finished.
+5. Press **Build**. **Preview** shows the app. Press **Deploy** on the top bar to publish it. Pick a label, then **Ship now**. You get a public link (`/a/…`) without opening files or connecting GitHub. Hide the chat with the minus when you are finished.
 6. Open **Projects → My projects** to rename (pencil) or delete (trash). Delete asks you to confirm.
 7. The project menu in the top bar chooses which app **Export**, **GitHub**, and **Deploy** use. **+ Create new** returns to the prompt. If a project is open, Architect asks you to save it first.
 
@@ -33,8 +33,8 @@ Start the same way, then switch **Lane** to Pro and pick a framework: LangGraph,
 - **Agents** is a free canvas. Drag cards, zoom, and connect any agent to any other from the dots on the card. Click a card or a line to edit it in a popup.
 - **Files** is the generated source. Edit a file and save it.
 - **Activity** lists what each agent did.
-- **GitHub** signs you in, creates a repository, and pushes the project.
-- **Deploy** publishes a public preview at an Architect URL (`/a/…`).
+- **GitHub** signs you in, creates a repository, and pushes the project. Soft does not need this to publish.
+- **Deploy** is the same top-bar action Soft uses. It publishes the preview on this Architect site.
 
 ## What a reviewer can click
 
@@ -114,8 +114,8 @@ Connectors such as Gmail and Slack on the home prompt are choices stored with th
 - Share marks a project so it also appears under Shared. Unshare removes that mark. Published lists apps you have deployed.
 - The project in the top bar is the one Export, GitHub, and Deploy use.
 - Export downloads a zip of the source, `preview.html`, and a small metadata file.
-- GitHub signs you in through a popup, creates a repository, and pushes the project files.
-- Deploy publishes a public preview at `/a/…` and shows the GitHub repository URL when one exists.
+- GitHub signs you in through a popup, creates a repository, and pushes the project files. Soft can publish without this step.
+- Deploy publishes a public preview at `/a/…` for either lane. Soft ships the preview they already see. The page stays on the Architect host.
 
 ## Run it yourself
 
